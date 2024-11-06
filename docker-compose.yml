@@ -16,9 +16,25 @@ services:
     networks:
       - app-network
 
+  mongo:
+    image: mongo:6.0
+    restart: always
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+    env_file: .env
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
 
 volumes:
   redis-data:
+  mongo-data:

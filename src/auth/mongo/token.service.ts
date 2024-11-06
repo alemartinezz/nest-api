@@ -16,20 +16,30 @@ export class TokenService {
     token: string,
     userId: string,
     expiresIn: number,
+    profileGroup: string,
+    rateLimit: number,
   ): Promise<Token> {
-    const expiresAt = new Date(Date.now() + expiresIn * 1000); // expiresIn is in seconds
-    const newToken = new this.tokenModel({ token, userId, expiresAt });
+    const startingDate = new Date();
+    const expiresAt = new Date(startingDate.getTime() + expiresIn * 1000);
+    const newToken = new this.tokenModel({
+      token,
+      userId,
+      expiresAt,
+      startingDate,
+      profileGroup,
+      rateLimit,
+    });
     return newToken.save();
   }
 
-  async validateToken(token: string): Promise<boolean> {
+  async validateToken(token: string): Promise<Token | null> {
     const tokenDoc = await this.tokenModel.findOne({ token });
-    if (!tokenDoc) return false;
+    if (!tokenDoc) return null;
     if (tokenDoc.expiresAt < new Date()) {
       await this.tokenModel.deleteOne({ token });
-      return false;
+      return null;
     }
-    return true;
+    return tokenDoc;
   }
 
   async deleteToken(token: string): Promise<void> {
