@@ -1,0 +1,24 @@
+services:
+  redis:
+    image: redis:8.0-M02-alpine
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    env_file: .env
+    entrypoint:
+      - redis-server
+      - '--appendonly'
+      - 'yes'
+      - '--requirepass'
+      - '${REDIS_PASSWORD}'
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis-data:
