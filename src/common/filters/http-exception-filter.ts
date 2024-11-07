@@ -26,6 +26,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			}
 		}
 
+		const metadata = response.getHeaders();
+
 		const errorResponse = {
 			status: 'error',
 			data: {
@@ -35,7 +37,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 					messages
 				}
 			},
-			metadata: null
+			metadata
 		};
 
 		response.status(statusCode).json(errorResponse);

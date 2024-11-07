@@ -1,4 +1,4 @@
-// .//src/auth/auth.service.ts
+// src/auth/auth.service.ts
 
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -21,9 +21,6 @@ export class AuthService {
 		this.ivHex = this.configService.get<string>('IV_HEX');
 	}
 
-	/**
-	 * Generates a token using AES-GCM encryption.
-	 */
 	generateToken(payload: any): string {
 		const iv = Buffer.from(this.ivHex, 'hex');
 		const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
@@ -36,9 +33,6 @@ export class AuthService {
 		return token;
 	}
 
-	/**
-	 * Verifies that the token was encrypted by us without fully decrypting it.
-	 */
 	verifyToken(token: string): boolean {
 		try {
 			const [encryptedData, authTag] = token.split(':');
@@ -46,7 +40,6 @@ export class AuthService {
 			const decipher = crypto.createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
 			decipher.setAuthTag(Buffer.from(authTag, 'hex'));
 			decipher.update(encryptedData, 'hex', 'utf8');
-			// No need to call decipher.final()
 			return true;
 		} catch (err) {
 			this.logger.error('Token verification failed', err.message);
@@ -54,9 +47,6 @@ export class AuthService {
 		}
 	}
 
-	/**
-	 * Decrypts the token and returns the payload.
-	 */
 	decryptToken(token: string): any {
 		try {
 			const [encryptedData, authTag] = token.split(':');
@@ -73,21 +63,18 @@ export class AuthService {
 		}
 	}
 
-	/**
-	 * Saves the token to MongoDB with rate limiting information.
-	 */
-	async saveToken(token: string, rateLimit: number, renewAt: Date) {
+	async saveToken(token: string, role: string, maxRequests: number, windowSizeInSeconds: number, renewAt: Date) {
 		const tokenDoc = new this.tokenModel({
 			token,
-			requestsRemaining: rateLimit,
-			renewAt: renewAt
+			role,
+			requestsRemaining: maxRequests,
+			maxRequests,
+			windowSizeInSeconds,
+			renewAt
 		});
 		await tokenDoc.save();
 	}
 
-	/**
-	 * Finds a token document in MongoDB.
-	 */
 	async findToken(token: string): Promise<TokenDocument> {
 		return this.tokenModel.findOne({ token });
 	}

@@ -1,4 +1,4 @@
-// .//src/auth/ip-rate-limit.guard.ts
+// src/auth/ip-rate-limit.guard.ts
 
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -18,11 +18,9 @@ export class IpRateLimitGuard implements CanActivate {
 		this.windowSizeInSeconds = this.configService.get<number>('IP_RATE_LIMIT_WINDOW', 60);
 	}
 
-	/**
-	 * Checks if the IP has exceeded the rate limit.
-	 */
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const request = context.switchToHttp().getRequest();
+		const response = context.switchToHttp().getResponse();
 		const ip = request.ip || request.connection.remoteAddress;
 
 		const key = `ip-rate-limit:${ip}`;
@@ -30,9 +28,15 @@ export class IpRateLimitGuard implements CanActivate {
 		const currentCount = await this.redisService.redis.incr(key);
 
 		if (currentCount === 1) {
-			// Set the expiration if this is the first request
 			await this.redisService.redis.expire(key, this.windowSizeInSeconds);
 		}
+
+		const ttl = await this.redisService.redis.ttl(key);
+		const resetTime = Math.floor(Date.now() / 1000) + ttl;
+
+		response.set('X-RateLimit-Limit', this.maxRequests.toString());
+		response.set('X-RateLimit-Remaining', (this.maxRequests - currentCount).toString());
+		response.set('X-RateLimit-Reset', resetTime.toString());
 
 		if (currentCount > this.maxRequests) {
 			this.logger.warn(`IP ${ip} has exceeded the rate limit`);

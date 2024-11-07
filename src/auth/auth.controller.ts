@@ -1,4 +1,4 @@
-// .//src/auth/auth.controller.ts
+// src/auth/auth.controller.ts
 
 import { Body, Controller, Post, Res } from '@nestjs/common';
 import { Response } from 'express';
@@ -9,21 +9,32 @@ import { Public } from './public.decorator';
 export class AuthController {
 	constructor(private readonly authService: AuthService) {}
 
-	/**
-	 * Endpoint to generate a new token.
-	 */
 	@Public()
 	@Post('generate-token')
 	async generateToken(@Body() body: any, @Res() res: Response) {
-		// Validate the body as needed
 		const payload = body.payload || {};
+		const role = body.role || 'user';
+
+		let maxRequests: number;
+		let windowSizeInSeconds: number;
+
+		if (role === 'premium') {
+			maxRequests = 10000;
+			windowSizeInSeconds = 3600;
+		} else if (role === 'basic') {
+			maxRequests = 1000;
+			windowSizeInSeconds = 3600;
+		} else {
+			maxRequests = 500;
+			windowSizeInSeconds = 3600;
+		}
+
 		const token = this.authService.generateToken(payload);
 
-		// Store the token in MongoDB with rate limiting info
-		const rateLimit = 1000; // Example rate limit
 		const renewTime = new Date();
-		renewTime.setHours(renewTime.getHours() + 1); // Renew in 1 hour
-		await this.authService.saveToken(token, rateLimit, renewTime);
+		renewTime.setSeconds(renewTime.getSeconds() + windowSizeInSeconds);
+
+		await this.authService.saveToken(token, role, maxRequests, windowSizeInSeconds, renewTime);
 
 		res.json({ token });
 	}

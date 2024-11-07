@@ -9,8 +9,8 @@ interface ResponseFormat<T> {
 	data: {
 		data: T;
 		errors: {
-			code: null;
-			messages: null;
+			code: null | string;
+			messages: null | string[];
 		};
 	};
 	metadata: any;

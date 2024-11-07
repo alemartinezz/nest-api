@@ -1,4 +1,4 @@
-// .//src/auth/token-rate-limit.guard.ts
+// src/auth/token-rate-limit.guard.ts
 
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -16,17 +16,14 @@ export class TokenRateLimitGuard implements CanActivate {
 		private readonly reflector: Reflector
 	) {}
 
-	/**
-	 * Checks if the token has exceeded its rate limit.
-	 */
 	async canActivate(context: ExecutionContext): Promise<boolean> {
-		// Skip if the route is marked as public
 		const isPublic = this.reflector.get<boolean>(IS_PUBLIC_KEY, context.getHandler());
 		if (isPublic) {
 			return true;
 		}
 
 		const request = context.switchToHttp().getRequest();
+		const response = context.switchToHttp().getResponse();
 		const tokenHeader = request.headers['authorization'];
 		if (!tokenHeader) {
 			this.logger.warn('No token provided in request');
@@ -43,7 +40,6 @@ export class TokenRateLimitGuard implements CanActivate {
 		let tokenData = await this.redisService.redis.hgetall(tokenKey);
 
 		if (Object.keys(tokenData).length === 0) {
-			// Token data not in Redis, fetch from MongoDB
 			const tokenDoc = await this.authService.findToken(token);
 
 			if (!tokenDoc) {
@@ -58,24 +54,34 @@ export class TokenRateLimitGuard implements CanActivate {
 				throw new HttpException('Token rate limit period has expired', HttpStatus.FORBIDDEN);
 			}
 
-			// Save to Redis
 			await this.redisService.redis.hmset(tokenKey, {
-				requestsRemaining: tokenDoc.requestsRemaining.toString()
+				requestsRemaining: tokenDoc.requestsRemaining.toString(),
+				maxRequests: tokenDoc.maxRequests.toString(),
+				windowSizeInSeconds: tokenDoc.windowSizeInSeconds.toString(),
+				expireAt: tokenDoc.renewAt.getTime().toString()
 			});
 			await this.redisService.redis.expire(tokenKey, timeRemaining);
 			tokenData = await this.redisService.redis.hgetall(tokenKey);
 		}
 
 		let requestsRemaining = parseInt(tokenData.requestsRemaining, 10);
+		const maxRequests = parseInt(tokenData.maxRequests, 10);
+		const windowSizeInSeconds = parseInt(tokenData.windowSizeInSeconds, 10);
+		const expireAt = parseInt(tokenData.expireAt, 10);
+
+		response.set('X-RateLimit-Limit', maxRequests.toString());
+		response.set('X-RateLimit-Remaining', requestsRemaining.toString());
+		response.set('X-RateLimit-Reset', Math.floor(expireAt / 1000).toString());
 
 		if (requestsRemaining <= 0) {
 			this.logger.warn('Token has exhausted its request limit');
 			throw new HttpException('Token has exhausted its request limit, please wait until the limit resets', HttpStatus.TOO_MANY_REQUESTS);
 		}
 
-		// Decrement the requestsRemaining
 		requestsRemaining -= 1;
 		await this.redisService.redis.hset(tokenKey, 'requestsRemaining', requestsRemaining.toString());
+
+		response.set('X-RateLimit-Remaining', requestsRemaining.toString());
 
 		return true;
 	}
