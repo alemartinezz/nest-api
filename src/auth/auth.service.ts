@@ -1,41 +1,94 @@
-// src/auth/auth.service.ts
+// .//src/auth/auth.service.ts
 
-import { Injectable } from '@nestjs/common';
-import { TokenService } from './mongo/token.service';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
+import * as crypto from 'crypto';
+import { Model } from 'mongoose';
+import { Token, TokenDocument } from './token.schema';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly tokenService: TokenService) {}
+	private readonly logger = new Logger(AuthService.name);
+	private readonly encryptionKey: Buffer;
+	private readonly ivHex: string;
 
-  async login(
-    userId: string,
-    profileGroup: string,
-  ): Promise<{ token: string }> {
-    const token = this.generateToken();
-    const rateLimit = this.getRateLimitForProfileGroup(profileGroup);
-    const expiresIn = 24 * 60 * 60;
+	constructor(
+		private readonly configService: ConfigService,
+		@InjectModel(Token.name) private tokenModel: Model<TokenDocument>
+	) {
+		this.encryptionKey = Buffer.from(this.configService.get<string>('ENCRYPTION_KEY'), 'utf8');
+		this.ivHex = this.configService.get<string>('IV_HEX');
+	}
 
-    await this.tokenService.createToken(
-      token,
-      userId,
-      expiresIn,
-      profileGroup,
-      rateLimit,
-    );
+	/**
+	 * Generates a token using AES-GCM encryption.
+	 */
+	generateToken(payload: any): string {
+		const iv = Buffer.from(this.ivHex, 'hex');
+		const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
 
-    return { token };
-  }
+		let encrypted = cipher.update(JSON.stringify(payload), 'utf8', 'hex');
+		encrypted += cipher.final('hex');
+		const authTag = cipher.getAuthTag().toString('hex');
 
-  private generateToken(): string {
-    return 'random-token-string';
-  }
+		const token = `${encrypted}:${authTag}`;
+		return token;
+	}
 
-  private getRateLimitForProfileGroup(profileGroup: string): number {
-    const rateLimits = {
-      basic: 100,
-      premium: 1000,
-      admin: 10000,
-    };
-    return rateLimits[profileGroup] || rateLimits['basic'];
-  }
+	/**
+	 * Verifies that the token was encrypted by us without fully decrypting it.
+	 */
+	verifyToken(token: string): boolean {
+		try {
+			const [encryptedData, authTag] = token.split(':');
+			const iv = Buffer.from(this.ivHex, 'hex');
+			const decipher = crypto.createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
+			decipher.setAuthTag(Buffer.from(authTag, 'hex'));
+			decipher.update(encryptedData, 'hex', 'utf8');
+			// No need to call decipher.final()
+			return true;
+		} catch (err) {
+			this.logger.error('Token verification failed', err.message);
+			return false;
+		}
+	}
+
+	/**
+	 * Decrypts the token and returns the payload.
+	 */
+	decryptToken(token: string): any {
+		try {
+			const [encryptedData, authTag] = token.split(':');
+			const iv = Buffer.from(this.ivHex, 'hex');
+			const decipher = crypto.createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
+			decipher.setAuthTag(Buffer.from(authTag, 'hex'));
+
+			let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+			decrypted += decipher.final('utf8');
+			return JSON.parse(decrypted);
+		} catch (err) {
+			this.logger.error('Token decryption failed', err.message);
+			throw new Error('Invalid token');
+		}
+	}
+
+	/**
+	 * Saves the token to MongoDB with rate limiting information.
+	 */
+	async saveToken(token: string, rateLimit: number, renewAt: Date) {
+		const tokenDoc = new this.tokenModel({
+			token,
+			requestsRemaining: rateLimit,
+			renewAt: renewAt
+		});
+		await tokenDoc.save();
+	}
+
+	/**
+	 * Finds a token document in MongoDB.
+	 */
+	async findToken(token: string): Promise<TokenDocument> {
+		return this.tokenModel.findOne({ token });
+	}
 }

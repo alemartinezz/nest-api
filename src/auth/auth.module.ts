@@ -1,18 +1,16 @@
-// src/auth/auth.module.ts
+// .//src/auth/auth.module.ts
 
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { Token, TokenSchema } from './mongo/token.schema';
-import { TokenService } from './mongo/token.service';
+import { MyRedisModule } from './redis/redis.module';
+import { Token, TokenSchema } from './token.schema';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([{ name: Token.name, schema: TokenSchema }]),
-  ],
-  controllers: [AuthController],
-  providers: [AuthService, TokenService],
-  exports: [AuthService],
+	imports: [MyRedisModule, MongooseModule.forFeature([{ name: Token.name, schema: TokenSchema }])],
+	providers: [AuthService],
+	controllers: [AuthController],
+	exports: [AuthService] // Export AuthService for use in guards
 })
-export class AuthModule {}
+export class MyAuthModule {}
