@@ -1,18 +1,14 @@
 // src/common/interceptors/transform.interceptor.ts
 
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { CallHandler, ExecutionContext, HttpStatus, Injectable, NestInterceptor } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-interface ResponseFormat<T> {
+export interface ResponseFormat<T> {
 	status: string;
-	data: {
-		data: T;
-		errors: {
-			code: null | string;
-			messages: null | string[];
-		};
-	};
+	code: number;
+	data: T;
+	errors: null | string[];
 	metadata: any;
 }
 
@@ -21,19 +17,21 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ResponseForma
 	intercept(context: ExecutionContext, next: CallHandler): Observable<ResponseFormat<T>> {
 		const ctx = context.switchToHttp();
 		const response = ctx.getResponse();
+		const statusCode: number = response.statusCode;
 		const metadata = response.getHeaders();
+
+		if ('x-powered-by' in metadata) {
+			delete metadata['x-powered-by'];
+		}
+
+		const statusText = HttpStatus[statusCode] || 'UnknownStatus';
 
 		return next.handle().pipe(
 			map((data) => ({
-				status: 'success',
-				code: response.statusCode,
-				data: {
-					data,
-					errors: {
-						code: null,
-						messages: null
-					}
-				},
+				status: statusText,
+				code: statusCode,
+				data,
+				errors: null,
 				metadata
 			}))
 		);

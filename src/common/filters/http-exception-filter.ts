@@ -1,6 +1,7 @@
 // src/common/filters/http-exception.filter.ts
 
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import { ResponseFormat } from '../interceptors/transform-interceptor';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -10,8 +11,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
 		const request = ctx.getRequest();
 
 		let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-		let code = 'InternalServerError';
-		let messages = ['An unexpected error occurred'];
+		let code: string = 'InternalServerError';
+		let messages: string[] = ['An unexpected error occurred'];
 
 		if (exception instanceof HttpException) {
 			statusCode = exception.getStatus();
@@ -22,21 +23,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			} else if (typeof exceptionResponse === 'object') {
 				const res: any = exceptionResponse;
 				messages = Array.isArray(res.message) ? res.message : [res.message];
-				code = res.code || exception.name || 'HttpException';
+				code = res.code || exception.name || HttpStatus[statusCode] || 'HttpException';
 			}
 		}
 
 		const metadata = response.getHeaders();
+		if ('x-powered-by' in metadata) {
+			delete metadata['x-powered-by'];
+		}
 
-		const errorResponse = {
-			status: 'error',
-			data: {
-				data: null,
-				errors: {
-					code,
-					messages
-				}
-			},
+		const statusText = HttpStatus[statusCode] || 'UnknownStatus';
+
+		const errorResponse: ResponseFormat<any> = {
+			status: statusText,
+			code: statusCode,
+			data: null,
+			errors: messages ?? null,
 			metadata
 		};
 

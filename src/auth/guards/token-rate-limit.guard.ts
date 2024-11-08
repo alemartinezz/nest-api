@@ -1,5 +1,8 @@
+// src/auth/guards/token-rate-limit.guard.ts
+
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { format } from 'date-fns';
 import { AuthService } from '../auth.service';
 import { IS_PUBLIC_KEY } from '../public.decorator';
 import { RedisService } from '../redis/redis.service';
@@ -48,8 +51,8 @@ export class TokenRateLimitGuard implements CanActivate {
 			const timeRemaining = Math.ceil((tokenDoc.renewAt.getTime() - Date.now()) / 1000);
 
 			if (timeRemaining <= 0) {
-				this.logger.warn('Token rate limit period has expired');
-				throw new HttpException('Token rate limit period has expired', HttpStatus.FORBIDDEN);
+				this.logger.warn('Token has expired');
+				throw new HttpException('Token has expired', HttpStatus.FORBIDDEN);
 			}
 
 			await this.redisService.redis.hmset(tokenKey, {
@@ -70,9 +73,12 @@ export class TokenRateLimitGuard implements CanActivate {
 		// Ensure requestsRemaining does not go below 0
 		const remaining = Math.max(requestsRemaining, 0);
 
+		// Format the reset time using Moment.js
+		const formattedResetTime = format(new Date(expireAt), 'EEE d MMM HH:mm');
+
 		response.set('X-RateLimit-Limit', maxRequests.toString());
 		response.set('X-RateLimit-Remaining', remaining.toString());
-		response.set('X-RateLimit-Reset', Math.floor(expireAt / 1000).toString());
+		response.set('X-RateLimit-Reset', formattedResetTime); // Set formatted time
 
 		if (requestsRemaining <= 0) {
 			this.logger.warn('Token has exhausted its request limit');
