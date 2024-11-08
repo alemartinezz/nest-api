@@ -1,5 +1,3 @@
-// src/auth/ip-rate-limit.guard.ts
-
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../redis/redis.service';
@@ -34,8 +32,10 @@ export class IpRateLimitGuard implements CanActivate {
 		const ttl = await this.redisService.redis.ttl(key);
 		const resetTime = Math.floor(Date.now() / 1000) + ttl;
 
+		const remaining = Math.max(this.maxRequests - currentCount, 0);
+
 		response.set('X-RateLimit-Limit', this.maxRequests.toString());
-		response.set('X-RateLimit-Remaining', (this.maxRequests - currentCount).toString());
+		response.set('X-RateLimit-Remaining', remaining.toString());
 		response.set('X-RateLimit-Reset', resetTime.toString());
 
 		if (currentCount > this.maxRequests) {

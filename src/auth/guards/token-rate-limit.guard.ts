@@ -1,5 +1,3 @@
-// src/auth/token-rate-limit.guard.ts
-
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthService } from '../auth.service';
@@ -69,8 +67,11 @@ export class TokenRateLimitGuard implements CanActivate {
 		const windowSizeInSeconds = parseInt(tokenData.windowSizeInSeconds, 10);
 		const expireAt = parseInt(tokenData.expireAt, 10);
 
+		// Ensure requestsRemaining does not go below 0
+		const remaining = Math.max(requestsRemaining, 0);
+
 		response.set('X-RateLimit-Limit', maxRequests.toString());
-		response.set('X-RateLimit-Remaining', requestsRemaining.toString());
+		response.set('X-RateLimit-Remaining', remaining.toString());
 		response.set('X-RateLimit-Reset', Math.floor(expireAt / 1000).toString());
 
 		if (requestsRemaining <= 0) {
@@ -78,7 +79,7 @@ export class TokenRateLimitGuard implements CanActivate {
 			throw new HttpException('Token has exhausted its request limit, please wait until the limit resets', HttpStatus.TOO_MANY_REQUESTS);
 		}
 
-		requestsRemaining -= 1;
+		requestsRemaining = Math.max(requestsRemaining - 1, 0);
 		await this.redisService.redis.hset(tokenKey, 'requestsRemaining', requestsRemaining.toString());
 
 		response.set('X-RateLimit-Remaining', requestsRemaining.toString());

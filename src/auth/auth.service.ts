@@ -1,5 +1,3 @@
-// src/auth/auth.service.ts
-
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
@@ -9,37 +7,41 @@ import { Token, TokenDocument } from './token.schema';
 
 @Injectable()
 export class AuthService {
-	private readonly logger = new Logger(AuthService.name);
+	readonly logger = new Logger(AuthService.name);
 	private readonly encryptionKey: Buffer;
-	private readonly ivHex: string;
 
 	constructor(
 		private readonly configService: ConfigService,
 		@InjectModel(Token.name) private tokenModel: Model<TokenDocument>
 	) {
 		this.encryptionKey = Buffer.from(this.configService.get<string>('ENCRYPTION_KEY'), 'utf8');
-		this.ivHex = this.configService.get<string>('IV_HEX');
 	}
 
 	generateToken(payload: any): string {
-		const iv = Buffer.from(this.ivHex, 'hex');
+		// Generate a random IV for each token
+		const iv = crypto.randomBytes(12); // 12 bytes for GCM
 		const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
 
 		let encrypted = cipher.update(JSON.stringify(payload), 'utf8', 'hex');
 		encrypted += cipher.final('hex');
 		const authTag = cipher.getAuthTag().toString('hex');
 
-		const token = `${encrypted}:${authTag}`;
+		// Include the IV in the token
+		const token = `${iv.toString('hex')}:${encrypted}:${authTag}`;
 		return token;
 	}
 
 	verifyToken(token: string): boolean {
 		try {
-			const [encryptedData, authTag] = token.split(':');
-			const iv = Buffer.from(this.ivHex, 'hex');
+			const [ivHex, encryptedData, authTag] = token.split(':');
+			if (!ivHex || !encryptedData || !authTag) {
+				throw new Error('Invalid token format');
+			}
+			const iv = Buffer.from(ivHex, 'hex');
 			const decipher = crypto.createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
 			decipher.setAuthTag(Buffer.from(authTag, 'hex'));
 			decipher.update(encryptedData, 'hex', 'utf8');
+			decipher.final('utf8');
 			return true;
 		} catch (err) {
 			this.logger.error('Token verification failed', err.message);
@@ -49,8 +51,11 @@ export class AuthService {
 
 	decryptToken(token: string): any {
 		try {
-			const [encryptedData, authTag] = token.split(':');
-			const iv = Buffer.from(this.ivHex, 'hex');
+			const [ivHex, encryptedData, authTag] = token.split(':');
+			if (!ivHex || !encryptedData || !authTag) {
+				throw new Error('Invalid token format');
+			}
+			const iv = Buffer.from(ivHex, 'hex');
 			const decipher = crypto.createDecipheriv('aes-256-gcm', this.encryptionKey, iv);
 			decipher.setAuthTag(Buffer.from(authTag, 'hex'));
 
