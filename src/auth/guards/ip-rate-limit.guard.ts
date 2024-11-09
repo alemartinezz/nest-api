@@ -1,54 +1,30 @@
 // src/auth/guards/ip-rate-limit.guard.ts
 
-import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { format } from 'date-fns';
 import { RedisService } from '../redis/redis.service';
+import { RateLimitGuard } from './rate-limit.guard';
 
 @Injectable()
-export class IpRateLimitGuard implements CanActivate {
-	private readonly logger = new Logger(IpRateLimitGuard.name);
-	private readonly maxRequests: number;
-	private readonly windowSizeInSeconds: number;
-
+export class IpRateLimitGuard extends RateLimitGuard {
 	constructor(
-		private readonly redisService: RedisService,
+		redisService: RedisService,
 		private readonly configService: ConfigService
 	) {
-		this.maxRequests = this.configService.get<number>('IP_RATE_LIMIT_MAX', 100);
-		this.windowSizeInSeconds = this.configService.get<number>('IP_RATE_LIMIT_WINDOW', 60);
+		super(redisService);
 	}
 
-	async canActivate(context: ExecutionContext): Promise<boolean> {
+	async getKey(context: ExecutionContext): Promise<string> {
 		const request = context.switchToHttp().getRequest();
-		const response = context.switchToHttp().getResponse();
 		const ip = request.ip || request.connection.remoteAddress;
+		return `ip-rate-limit:${ip}`;
+	}
 
-		const key = `ip-rate-limit:${ip}`;
+	async getLimit(context: ExecutionContext): Promise<number> {
+		return this.configService.get<number>('IP_RATE_LIMIT_MAX', 100);
+	}
 
-		const currentCount = await this.redisService.redis.incr(key);
-
-		if (currentCount === 1) {
-			await this.redisService.redis.expire(key, this.windowSizeInSeconds);
-		}
-
-		const ttl = await this.redisService.redis.ttl(key);
-		const resetTimestamp = Math.floor(Date.now() / 1000) + ttl;
-
-		// Format the reset time using Moment.js
-		const formattedResetTime = format(new Date(resetTimestamp * 1000), 'EEE d MMM HH:mm');
-
-		const remaining = Math.max(this.maxRequests - currentCount, 0);
-
-		response.set('X-RateLimit-Limit', this.maxRequests.toString());
-		response.set('X-RateLimit-Remaining', remaining.toString());
-		response.set('X-RateLimit-Reset', formattedResetTime); // Set formatted time
-
-		if (currentCount > this.maxRequests) {
-			this.logger.warn(`IP ${ip} has exceeded the rate limit`);
-			throw new HttpException('Too many requests from this IP, please try again after some time.', HttpStatus.TOO_MANY_REQUESTS);
-		}
-
-		return true;
+	async getWindow(context: ExecutionContext): Promise<number> {
+		return this.configService.get<number>('IP_RATE_LIMIT_WINDOW', 60);
 	}
 }

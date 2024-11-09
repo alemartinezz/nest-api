@@ -1,30 +1,29 @@
 // src/auth/guards/token-rate-limit.guard.ts
 
-import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { ExecutionContext, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { format } from 'date-fns';
 import { AuthService } from '../auth.service';
-import { IS_PUBLIC_KEY } from '../public.decorator';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { RedisService } from '../redis/redis.service';
+import { RateLimitGuard } from './rate-limit.guard';
 
 @Injectable()
-export class TokenRateLimitGuard implements CanActivate {
-	private readonly logger = new Logger(TokenRateLimitGuard.name);
-
+export class TokenRateLimitGuard extends RateLimitGuard {
 	constructor(
+		redisService: RedisService,
 		private readonly authService: AuthService,
-		private readonly redisService: RedisService,
 		private readonly reflector: Reflector
-	) {}
+	) {
+		super(redisService);
+	}
 
-	async canActivate(context: ExecutionContext): Promise<boolean> {
+	async getKey(context: ExecutionContext): Promise<string> {
 		const isPublic = this.reflector.get<boolean>(IS_PUBLIC_KEY, context.getHandler());
 		if (isPublic) {
-			return true;
+			return '';
 		}
 
 		const request = context.switchToHttp().getRequest();
-		const response = context.switchToHttp().getResponse();
 		const tokenHeader = request.headers['authorization'];
 		if (!tokenHeader) {
 			this.logger.warn('No token provided in request');
@@ -37,59 +36,35 @@ export class TokenRateLimitGuard implements CanActivate {
 			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
 		}
 
-		const tokenKey = `token-rate-limit:${token}`;
-		let tokenData = await this.redisService.redis.hgetall(tokenKey);
+		return `token-rate-limit:${token}`;
+	}
 
-		if (Object.keys(tokenData).length === 0) {
-			const tokenDoc = await this.authService.findToken(token);
-
-			if (!tokenDoc) {
-				this.logger.warn('Token not found in database');
-				throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-			}
-
-			const timeRemaining = Math.ceil((tokenDoc.renewAt.getTime() - Date.now()) / 1000);
-
-			if (timeRemaining <= 0) {
-				this.logger.warn('Token has expired');
-				throw new HttpException('Token has expired', HttpStatus.FORBIDDEN);
-			}
-
-			await this.redisService.redis.hmset(tokenKey, {
-				requestsRemaining: tokenDoc.requestsRemaining.toString(),
-				maxRequests: tokenDoc.maxRequests.toString(),
-				windowSizeInSeconds: tokenDoc.windowSizeInSeconds.toString(),
-				expireAt: tokenDoc.renewAt.getTime().toString()
-			});
-			await this.redisService.redis.expire(tokenKey, timeRemaining);
-			tokenData = await this.redisService.redis.hgetall(tokenKey);
+	async getLimit(context: ExecutionContext): Promise<number> {
+		const request = context.switchToHttp().getRequest();
+		const tokenHeader = request.headers['authorization'];
+		const token = tokenHeader.replace('Bearer ', '');
+		const tokenDoc = await this.authService.findToken(token);
+		if (!tokenDoc) {
+			this.logger.warn('Token not found in database');
+			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
 		}
+		return tokenDoc.maxRequests;
+	}
 
-		let requestsRemaining = parseInt(tokenData.requestsRemaining, 10);
-		const maxRequests = parseInt(tokenData.maxRequests, 10);
-		const windowSizeInSeconds = parseInt(tokenData.windowSizeInSeconds, 10);
-		const expireAt = parseInt(tokenData.expireAt, 10);
-
-		// Ensure requestsRemaining does not go below 0
-		const remaining = Math.max(requestsRemaining, 0);
-
-		// Format the reset time using Moment.js
-		const formattedResetTime = format(new Date(expireAt), 'EEE d MMM HH:mm');
-
-		response.set('X-RateLimit-Limit', maxRequests.toString());
-		response.set('X-RateLimit-Remaining', remaining.toString());
-		response.set('X-RateLimit-Reset', formattedResetTime); // Set formatted time
-
-		if (requestsRemaining <= 0) {
-			this.logger.warn('Token has exhausted its request limit');
-			throw new HttpException('Token has exhausted its request limit, please wait until the limit resets', HttpStatus.TOO_MANY_REQUESTS);
+	async getWindow(context: ExecutionContext): Promise<number> {
+		const request = context.switchToHttp().getRequest();
+		const tokenHeader = request.headers['authorization'];
+		const token = tokenHeader.replace('Bearer ', '');
+		const tokenDoc = await this.authService.findToken(token);
+		if (!tokenDoc) {
+			this.logger.warn('Token not found in database');
+			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
 		}
-
-		requestsRemaining = Math.max(requestsRemaining - 1, 0);
-		await this.redisService.redis.hset(tokenKey, 'requestsRemaining', requestsRemaining.toString());
-
-		response.set('X-RateLimit-Remaining', requestsRemaining.toString());
-
-		return true;
+		const timeRemaining = Math.ceil((tokenDoc.renewAt.getTime() - Date.now()) / 1000);
+		if (timeRemaining <= 0) {
+			this.logger.warn('Token has expired');
+			throw new HttpException('Token has expired', HttpStatus.FORBIDDEN);
+		}
+		return timeRemaining;
 	}
 }

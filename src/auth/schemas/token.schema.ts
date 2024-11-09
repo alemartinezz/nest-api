@@ -1,11 +1,11 @@
-// src/auth/token.schema.ts
+// src/auth/schemas/token.schema.ts
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
 export type TokenDocument = Token & Document;
 
-@Schema()
+@Schema({ timestamps: true })
 export class Token {
 	@Prop({ required: true, unique: true })
 	token: string;
@@ -24,6 +24,9 @@ export class Token {
 
 	@Prop({ required: true })
 	renewAt: Date;
+
+	@Prop({ required: true, index: true })
+	expiresAt: Date;
 }
 
 export const TokenSchema = SchemaFactory.createForClass(Token);

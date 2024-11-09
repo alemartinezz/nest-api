@@ -1,9 +1,11 @@
+// src/auth/auth.service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
-import { Token, TokenDocument } from './token.schema';
+import { Token, TokenDocument } from './schemas/token.schema';
 
 @Injectable()
 export class AuthService {
@@ -18,15 +20,13 @@ export class AuthService {
 	}
 
 	generateToken(payload: any): string {
-		// Generate a random IV for each token
-		const iv = crypto.randomBytes(12); // 12 bytes for GCM
+		const iv = crypto.randomBytes(12);
 		const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
 
 		let encrypted = cipher.update(JSON.stringify(payload), 'utf8', 'hex');
 		encrypted += cipher.final('hex');
 		const authTag = cipher.getAuthTag().toString('hex');
 
-		// Include the IV in the token
 		const token = `${iv.toString('hex')}:${encrypted}:${authTag}`;
 		return token;
 	}
@@ -44,7 +44,7 @@ export class AuthService {
 			decipher.final('utf8');
 			return true;
 		} catch (err) {
-			this.logger.error('Token verification failed', err.message);
+			this.logger.error('Token verification failed', (err as Error).message);
 			return false;
 		}
 	}
@@ -63,7 +63,7 @@ export class AuthService {
 			decrypted += decipher.final('utf8');
 			return JSON.parse(decrypted);
 		} catch (err) {
-			this.logger.error('Token decryption failed', err.message);
+			this.logger.error('Token decryption failed', (err as Error).message);
 			throw new Error('Invalid token');
 		}
 	}
@@ -75,7 +75,8 @@ export class AuthService {
 			requestsRemaining: maxRequests,
 			maxRequests,
 			windowSizeInSeconds,
-			renewAt
+			renewAt,
+			expiresAt: renewAt
 		});
 		await tokenDoc.save();
 	}

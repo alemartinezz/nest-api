@@ -2,7 +2,7 @@
 
 import { Body, Controller, HttpException, HttpStatus, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { Public } from './public.decorator';
+import { Public } from './decorators/public.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -25,7 +25,7 @@ export class AuthController {
 				maxRequests = 1000;
 				windowSizeInSeconds = 3600;
 			} else {
-				maxRequests = 500; // Adjusted as per your current role
+				maxRequests = 500;
 				windowSizeInSeconds = 3600;
 			}
 
@@ -45,7 +45,7 @@ export class AuthController {
 				this.authService.logger.warn('Duplicate token generated, retrying...');
 				return this.generateToken(body, retryCount + 1);
 			}
-			throw error;
+			throw new HttpException('Token generation failed', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 }

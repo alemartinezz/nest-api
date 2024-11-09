@@ -1,4 +1,4 @@
-// .//src/auth/redis/redis.service.ts
+// src/auth/redis/redis.service.ts
 
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
@@ -6,7 +6,7 @@ import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleInit {
-	private readonly logger = new Logger(RedisService.name);
+	readonly logger = new Logger(RedisService.name);
 
 	constructor(@InjectRedis() readonly redis: Redis) {}
 
