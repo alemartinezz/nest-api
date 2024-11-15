@@ -1,9 +1,10 @@
 // src/main.ts
 
+import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
-import { AllExceptionsFilter } from './common/filters/http-exception-filter';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform-interceptor';
 
 async function bootstrap() {
@@ -11,15 +12,28 @@ async function bootstrap() {
 		logger: ['log', 'error', 'warn', 'debug', 'verbose']
 	});
 
+	// Enable global interceptors and filters
 	app.useGlobalInterceptors(new TransformInterceptor());
 	app.useGlobalFilters(new AllExceptionsFilter());
 
+	// Enable global ValidationPipe with transformation
+	app.useGlobalPipes(
+		new ValidationPipe({
+			whitelist: true,
+			transform: true, // Enables transformation
+			forbidNonWhitelisted: true, // Optionally forbid non-whitelisted properties
+			transformOptions: {
+				enableImplicitConversion: true // Enables implicit type conversion
+			}
+		})
+	);
+
 	const configService = app.get(ConfigService);
+	const protocol = configService.get<string>('PROTOCOL');
 	const apiPort = configService.get<number>('API_PORT');
 	const apiHost = configService.get<string>('API_HOST');
 
 	await app.listen(apiPort, apiHost, () => {
-		const protocol = configService.get<string>('PROTOCOL');
 		console.log(`🚀 Server running at ${protocol}://${apiHost}:${apiPort}`);
 	});
 }

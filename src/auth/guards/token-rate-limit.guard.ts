@@ -6,17 +6,18 @@ import { format } from 'date-fns';
 import { AuthService } from '../auth.service';
 import { IS_PUBLIC_KEY } from '../public.decorator';
 import { RedisService } from '../redis/redis.service';
+import { RateLimitConfigService } from './rate-limit-config.service';
 
 @Injectable()
 export class TokenRateLimitGuard implements CanActivate {
 	private readonly logger = new Logger(TokenRateLimitGuard.name);
-	private readonly maxRequests = 10000; // Set your desired limit
-	private readonly windowSizeInSeconds = 3600; // 1 hour
+	private readonly TOKEN_REGEX = /^[a-f0-9]{32}$/i; // 32-character hexadecimal
 
 	constructor(
 		private readonly authService: AuthService,
 		private readonly redisService: RedisService,
-		private readonly reflector: Reflector
+		private readonly reflector: Reflector,
+		private readonly rateLimitConfigService: RateLimitConfigService
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -27,38 +28,53 @@ export class TokenRateLimitGuard implements CanActivate {
 
 		const request = context.switchToHttp().getRequest();
 		const response = context.switchToHttp().getResponse();
-		const clientId = request.headers['clientid'];
-		const token = request.headers['authorization']?.replace('Bearer ', '');
+		const authHeader = request.headers['authorization'];
 
-		if (!clientId || !token) {
-			this.logger.warn('ClientId or token missing in request');
-			throw new HttpException('ClientId and token are required', HttpStatus.UNAUTHORIZED);
+		if (!authHeader) {
+			this.logger.warn('Authorization header missing');
+			throw new HttpException('Authorization header is required', HttpStatus.UNAUTHORIZED);
 		}
 
-		const isValid = await this.authService.validateToken(clientId, token);
-		if (!isValid) {
-			this.logger.warn('Invalid clientId or token');
-			throw new HttpException('Invalid clientId or token', HttpStatus.UNAUTHORIZED);
+		const token = authHeader.replace('Bearer ', '');
+
+		// Validate token format
+		if (!this.TOKEN_REGEX.test(token)) {
+			this.logger.warn(`Invalid token format: ${token}`);
+			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
 		}
 
-		const key = `token-rate-limit:${clientId}`;
+		// Find user by token
+		const user = await this.authService.findUserByToken(token);
+		if (!user) {
+			this.logger.warn('Invalid token');
+			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+		}
+
+		const { role } = user;
+
+		// Get rate limits based on user role
+		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(role);
+
+		const { maxRequests, windowSizeInSeconds } = rateLimitConfig;
+
+		const key = `token-rate-limit:${user.token}`;
 		const currentCount = await this.redisService.redis.incr(key);
 
 		if (currentCount === 1) {
-			await this.redisService.redis.expire(key, this.windowSizeInSeconds);
+			await this.redisService.redis.expire(key, windowSizeInSeconds);
 		}
 
 		const ttl = await this.redisService.redis.ttl(key);
 		const resetTimestamp = Math.floor(Date.now() / 1000) + ttl;
-		const formattedResetTime = format(new Date(resetTimestamp * 1000), 'EEE d MMM HH:mm');
-		const remaining = Math.max(this.maxRequests - currentCount, 0);
+		const formattedResetTime = format(new Date(resetTimestamp * 1000), 'EEE d MMM HH:mm:ss');
+		const remaining = Math.max(maxRequests - currentCount, 0);
 
-		response.set('X-RateLimit-Limit', this.maxRequests.toString());
+		response.set('X-RateLimit-Limit', maxRequests.toString());
 		response.set('X-RateLimit-Remaining', remaining.toString());
 		response.set('X-RateLimit-Reset', formattedResetTime);
 
-		if (currentCount > this.maxRequests) {
-			this.logger.warn(`ClientId ${clientId} has exceeded the rate limit`);
+		if (currentCount > maxRequests) {
+			this.logger.warn(`Token ${user.token} with role ${role} has exceeded the rate limit`);
 			throw new HttpException('Too many requests, please try again later.', HttpStatus.TOO_MANY_REQUESTS);
 		}
 

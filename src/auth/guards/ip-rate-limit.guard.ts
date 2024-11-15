@@ -33,7 +33,7 @@ export class IpRateLimitGuard implements CanActivate {
 
 		const ttl = await this.redisService.redis.ttl(key);
 		const resetTimestamp = Math.floor(Date.now() / 1000) + ttl;
-		const formattedResetTime = format(new Date(resetTimestamp * 1000), 'EEE d MMM HH:mm');
+		const formattedResetTime = format(new Date(resetTimestamp * 1000), 'EEE d MMM HH:mm:ss');
 		const remaining = Math.max(this.maxRequests - currentCount, 0);
 
 		response.set('X-RateLimit-Limit', this.maxRequests.toString());

@@ -8,7 +8,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
 	catch(exception: unknown, host: ArgumentsHost) {
 		const ctx = host.switchToHttp();
 		const response = ctx.getResponse();
-		const request = ctx.getRequest();
 
 		let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
 		let code: string = 'InternalServerError';
