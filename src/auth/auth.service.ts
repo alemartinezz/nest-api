@@ -30,12 +30,16 @@ export class AuthService {
 
 	async findUserByEmail(email: string): Promise<UserDocument> {
 		const user = await this.userModel.findOne({ email });
-		if (user && !user.role) {
-			user.role = UserRole.USER;
-			await user.save();
-			this.logger.log(`Assigned default role to user ${email}`);
+		if (user) {
+			if (!user.role) {
+				user.role = UserRole.USER;
+				await user.save();
+				this.logger.log(`Assigned default role to user ${email}`);
+			}
+			return { email: user.email, role: user.role, token: user.token } as UserDocument;
+		} else {
+			return null;
 		}
-		return { email: user.email, role: user.role, token: user.token } as UserDocument;
 	}
 
 	async findUserByToken(token: string): Promise<UserDocument> {

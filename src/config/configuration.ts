@@ -2,10 +2,9 @@
 
 import { Logger } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
-import { IsIn, IsNotEmpty, IsNumberString, IsString, validateSync } from 'class-validator';
+import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
 
 export class EnvConfig {
-	// Existing environment variables...
 	@IsString()
 	@IsNotEmpty()
 	@IsIn(['development', 'staging', 'production'])
@@ -15,29 +14,29 @@ export class EnvConfig {
 	@IsNotEmpty()
 	API_HOST: string;
 
-	@IsNumberString()
+	@IsNumber()
 	@IsNotEmpty()
-	API_PORT: string;
+	API_PORT: number;
 
 	@IsString()
 	@IsNotEmpty()
 	PROTOCOL: string;
 
-	@IsString()
+	@IsNumber()
 	@IsNotEmpty()
-	IP_RATE_LIMIT_MAX: string;
+	IP_RATE_LIMIT_MAX: number;
 
-	@IsString()
+	@IsNumber()
 	@IsNotEmpty()
-	IP_RATE_LIMIT_WINDOW: string;
+	IP_RATE_LIMIT_WINDOW: number;
 
 	@IsString()
 	@IsNotEmpty()
 	REDIS_HOST: string;
 
-	@IsNumberString()
+	@IsNumber()
 	@IsNotEmpty()
-	REDIS_PORT: string;
+	REDIS_PORT: number;
 
 	@IsString()
 	@IsNotEmpty()
@@ -55,9 +54,9 @@ export class EnvConfig {
 	@IsNotEmpty()
 	MONGO_HOST: string;
 
-	@IsNumberString()
+	@IsNumber()
 	@IsNotEmpty()
-	MONGO_PORT: string;
+	MONGO_PORT: number;
 
 	@IsString()
 	@IsNotEmpty()
@@ -71,7 +70,9 @@ export class EnvConfig {
 	@IsNotEmpty()
 	IV_HEX: string;
 
-	MONGO_URI: string;
+	@IsOptional()
+	@IsString()
+	MONGO_URI?: string;
 }
 
 export function validateEnv(configEnv: Record<string, unknown>): EnvConfig {
@@ -83,22 +84,23 @@ export function validateEnv(configEnv: Record<string, unknown>): EnvConfig {
 		skipMissingProperties: false
 	});
 
-	// URL-encode the username and password
-	const encodedUsername = encodeURIComponent(configEnv.MONGO_USERNAME as string);
-	const encodedPassword = encodeURIComponent(configEnv.MONGO_PASSWORD as string);
+	if (errors.length > 0) {
+		const errorMessages = errors.map((error) => Object.values(error.constraints || {}).join(', ')).join('; ');
+		const logger = new Logger(EnvConfig.name);
+		logger.error(`❌ Failed to validate environment variables: ${errorMessages}`);
+		throw new Error(`Environment validation failed: ${errorMessages}`);
+	}
 
-	// Construct MongoDB URI with encoded credentials and authSource
-	validatedConfig.MONGO_URI = `mongodb://${encodedUsername}:${encodedPassword}@${configEnv.MONGO_HOST}:${configEnv.MONGO_PORT}/${configEnv.MONGO_DATABASE}?authSource=admin`;
+	// URL-encode the username y password
+	const encodedUsername = encodeURIComponent(validatedConfig.MONGO_USERNAME);
+	const encodedPassword = encodeURIComponent(validatedConfig.MONGO_PASSWORD);
+
+	// Construir la URI de MongoDB
+	validatedConfig.MONGO_URI = `mongodb://${encodedUsername}:${encodedPassword}@${validatedConfig.MONGO_HOST}:${validatedConfig.MONGO_PORT}/${validatedConfig.MONGO_DATABASE}?authSource=admin`;
 	console.log(`MongoDB URI: ${validatedConfig.MONGO_URI}`);
 
 	const logger = new Logger(EnvConfig.name);
-
-	if (errors.length > 0) {
-		logger.error('❌ Failed to validate environment variables');
-		throw new Error(errors.toString());
-	} else {
-		logger.log('✅ Successfully loaded environment variables');
-	}
+	logger.log('✅ Successfully loaded and validated environment variables');
 
 	return validatedConfig;
 }

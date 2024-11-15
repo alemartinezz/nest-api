@@ -21,63 +21,71 @@ export class TokenRateLimitGuard implements CanActivate {
 	) {}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
-		const isPublic = this.reflector.get<boolean>(IS_PUBLIC_KEY, context.getHandler());
-		if (isPublic) {
+		try {
+			const isPublic = this.reflector.get<boolean>(IS_PUBLIC_KEY, context.getHandler());
+			if (isPublic) {
+				return true;
+			}
+
+			const request = context.switchToHttp().getRequest();
+			const response = context.switchToHttp().getResponse();
+			const authHeader = request.headers['authorization'];
+
+			if (!authHeader) {
+				this.logger.warn('Authorization header missing');
+				throw new HttpException('Authorization header is required', HttpStatus.UNAUTHORIZED);
+			}
+
+			const token = authHeader.replace('Bearer ', '');
+
+			// Validate token format
+			if (!this.TOKEN_REGEX.test(token)) {
+				this.logger.warn(`Invalid token format: ${token}`);
+				throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+			}
+
+			// Find user by token
+			const user = await this.authService.findUserByToken(token);
+			if (!user) {
+				this.logger.warn('Invalid token');
+				throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+			}
+
+			const { role } = user;
+
+			// Get rate limits based on user role
+			const rateLimitConfig = this.rateLimitConfigService.getRateLimit(role);
+
+			const { maxRequests, windowSizeInSeconds } = rateLimitConfig;
+
+			const key = `token-rate-limit:${user.token}`;
+			const currentCount = await this.redisService.redis.incr(key);
+
+			if (currentCount === 1) {
+				await this.redisService.redis.expire(key, windowSizeInSeconds);
+			}
+
+			const ttl = await this.redisService.redis.ttl(key);
+			const resetTimestamp = Math.floor(Date.now() / 1000) + ttl;
+			const formattedResetTime = format(new Date(resetTimestamp * 1000), 'EEE d MMM HH:mm:ss');
+			const remaining = Math.max(maxRequests - currentCount, 0);
+
+			response.set('X-RateLimit-Limit', maxRequests.toString());
+			response.set('X-RateLimit-Remaining', remaining.toString());
+			response.set('X-RateLimit-Reset', formattedResetTime);
+
+			if (currentCount > maxRequests) {
+				this.logger.warn(`Token ${user.token} with role ${role} has exceeded the rate limit`);
+				throw new HttpException('Too many requests, please try again later.', HttpStatus.TOO_MANY_REQUESTS);
+			}
+
 			return true;
+		} catch (error) {
+			if (error instanceof HttpException) {
+				throw error;
+			}
+			this.logger.error('Error in TokenRateLimitGuard', error);
+			throw new HttpException('Internal server error in token rate limiting', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
-
-		const request = context.switchToHttp().getRequest();
-		const response = context.switchToHttp().getResponse();
-		const authHeader = request.headers['authorization'];
-
-		if (!authHeader) {
-			this.logger.warn('Authorization header missing');
-			throw new HttpException('Authorization header is required', HttpStatus.UNAUTHORIZED);
-		}
-
-		const token = authHeader.replace('Bearer ', '');
-
-		// Validate token format
-		if (!this.TOKEN_REGEX.test(token)) {
-			this.logger.warn(`Invalid token format: ${token}`);
-			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-		}
-
-		// Find user by token
-		const user = await this.authService.findUserByToken(token);
-		if (!user) {
-			this.logger.warn('Invalid token');
-			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-		}
-
-		const { role } = user;
-
-		// Get rate limits based on user role
-		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(role);
-
-		const { maxRequests, windowSizeInSeconds } = rateLimitConfig;
-
-		const key = `token-rate-limit:${user.token}`;
-		const currentCount = await this.redisService.redis.incr(key);
-
-		if (currentCount === 1) {
-			await this.redisService.redis.expire(key, windowSizeInSeconds);
-		}
-
-		const ttl = await this.redisService.redis.ttl(key);
-		const resetTimestamp = Math.floor(Date.now() / 1000) + ttl;
-		const formattedResetTime = format(new Date(resetTimestamp * 1000), 'EEE d MMM HH:mm:ss');
-		const remaining = Math.max(maxRequests - currentCount, 0);
-
-		response.set('X-RateLimit-Limit', maxRequests.toString());
-		response.set('X-RateLimit-Remaining', remaining.toString());
-		response.set('X-RateLimit-Reset', formattedResetTime);
-
-		if (currentCount > maxRequests) {
-			this.logger.warn(`Token ${user.token} with role ${role} has exceeded the rate limit`);
-			throw new HttpException('Too many requests, please try again later.', HttpStatus.TOO_MANY_REQUESTS);
-		}
-
-		return true;
 	}
 }
