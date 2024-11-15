@@ -25,7 +25,6 @@ export class IpRateLimitGuard implements CanActivate {
 		const ip = request.ip || request.connection.remoteAddress;
 
 		const key = `ip-rate-limit:${ip}`;
-
 		const currentCount = await this.redisService.redis.incr(key);
 
 		if (currentCount === 1) {
@@ -34,19 +33,16 @@ export class IpRateLimitGuard implements CanActivate {
 
 		const ttl = await this.redisService.redis.ttl(key);
 		const resetTimestamp = Math.floor(Date.now() / 1000) + ttl;
-
-		// Format the reset time using Moment.js
 		const formattedResetTime = format(new Date(resetTimestamp * 1000), 'EEE d MMM HH:mm');
-
 		const remaining = Math.max(this.maxRequests - currentCount, 0);
 
 		response.set('X-RateLimit-Limit', this.maxRequests.toString());
 		response.set('X-RateLimit-Remaining', remaining.toString());
-		response.set('X-RateLimit-Reset', formattedResetTime); // Set formatted time
+		response.set('X-RateLimit-Reset', formattedResetTime);
 
 		if (currentCount > this.maxRequests) {
 			this.logger.warn(`IP ${ip} has exceeded the rate limit`);
-			throw new HttpException('Too many requests from this IP, please try again after some time.', HttpStatus.TOO_MANY_REQUESTS);
+			throw new HttpException('Too many requests from this IP, please try again later.', HttpStatus.TOO_MANY_REQUESTS);
 		}
 
 		return true;

@@ -10,6 +10,8 @@ import { RedisService } from '../redis/redis.service';
 @Injectable()
 export class TokenRateLimitGuard implements CanActivate {
 	private readonly logger = new Logger(TokenRateLimitGuard.name);
+	private readonly maxRequests = 10000; // Set your desired limit
+	private readonly windowSizeInSeconds = 3600; // 1 hour
 
 	constructor(
 		private readonly authService: AuthService,
@@ -25,70 +27,40 @@ export class TokenRateLimitGuard implements CanActivate {
 
 		const request = context.switchToHttp().getRequest();
 		const response = context.switchToHttp().getResponse();
-		const tokenHeader = request.headers['authorization'];
-		if (!tokenHeader) {
-			this.logger.warn('No token provided in request');
-			throw new HttpException('No token provided', HttpStatus.UNAUTHORIZED);
+		const clientId = request.headers['clientid'];
+		const token = request.headers['authorization']?.replace('Bearer ', '');
+
+		if (!clientId || !token) {
+			this.logger.warn('ClientId or token missing in request');
+			throw new HttpException('ClientId and token are required', HttpStatus.UNAUTHORIZED);
 		}
 
-		const token = tokenHeader.replace('Bearer ', '');
-		if (!this.authService.verifyToken(token)) {
-			this.logger.warn('Invalid token');
-			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+		const isValid = await this.authService.validateToken(clientId, token);
+		if (!isValid) {
+			this.logger.warn('Invalid clientId or token');
+			throw new HttpException('Invalid clientId or token', HttpStatus.UNAUTHORIZED);
 		}
 
-		const tokenKey = `token-rate-limit:${token}`;
-		let tokenData = await this.redisService.redis.hgetall(tokenKey);
+		const key = `token-rate-limit:${clientId}`;
+		const currentCount = await this.redisService.redis.incr(key);
 
-		if (Object.keys(tokenData).length === 0) {
-			const tokenDoc = await this.authService.findToken(token);
-
-			if (!tokenDoc) {
-				this.logger.warn('Token not found in database');
-				throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
-			}
-
-			const timeRemaining = Math.ceil((tokenDoc.renewAt.getTime() - Date.now()) / 1000);
-
-			if (timeRemaining <= 0) {
-				this.logger.warn('Token has expired');
-				throw new HttpException('Token has expired', HttpStatus.FORBIDDEN);
-			}
-
-			await this.redisService.redis.hmset(tokenKey, {
-				requestsRemaining: tokenDoc.requestsRemaining.toString(),
-				maxRequests: tokenDoc.maxRequests.toString(),
-				windowSizeInSeconds: tokenDoc.windowSizeInSeconds.toString(),
-				expireAt: tokenDoc.renewAt.getTime().toString()
-			});
-			await this.redisService.redis.expire(tokenKey, timeRemaining);
-			tokenData = await this.redisService.redis.hgetall(tokenKey);
+		if (currentCount === 1) {
+			await this.redisService.redis.expire(key, this.windowSizeInSeconds);
 		}
 
-		let requestsRemaining = parseInt(tokenData.requestsRemaining, 10);
-		const maxRequests = parseInt(tokenData.maxRequests, 10);
-		const windowSizeInSeconds = parseInt(tokenData.windowSizeInSeconds, 10);
-		const expireAt = parseInt(tokenData.expireAt, 10);
+		const ttl = await this.redisService.redis.ttl(key);
+		const resetTimestamp = Math.floor(Date.now() / 1000) + ttl;
+		const formattedResetTime = format(new Date(resetTimestamp * 1000), 'EEE d MMM HH:mm');
+		const remaining = Math.max(this.maxRequests - currentCount, 0);
 
-		// Ensure requestsRemaining does not go below 0
-		const remaining = Math.max(requestsRemaining, 0);
-
-		// Format the reset time using Moment.js
-		const formattedResetTime = format(new Date(expireAt), 'EEE d MMM HH:mm');
-
-		response.set('X-RateLimit-Limit', maxRequests.toString());
+		response.set('X-RateLimit-Limit', this.maxRequests.toString());
 		response.set('X-RateLimit-Remaining', remaining.toString());
-		response.set('X-RateLimit-Reset', formattedResetTime); // Set formatted time
+		response.set('X-RateLimit-Reset', formattedResetTime);
 
-		if (requestsRemaining <= 0) {
-			this.logger.warn('Token has exhausted its request limit');
-			throw new HttpException('Token has exhausted its request limit, please wait until the limit resets', HttpStatus.TOO_MANY_REQUESTS);
+		if (currentCount > this.maxRequests) {
+			this.logger.warn(`ClientId ${clientId} has exceeded the rate limit`);
+			throw new HttpException('Too many requests, please try again later.', HttpStatus.TOO_MANY_REQUESTS);
 		}
-
-		requestsRemaining = Math.max(requestsRemaining - 1, 0);
-		await this.redisService.redis.hset(tokenKey, 'requestsRemaining', requestsRemaining.toString());
-
-		response.set('X-RateLimit-Remaining', requestsRemaining.toString());
 
 		return true;
 	}

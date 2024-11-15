@@ -1,4 +1,4 @@
-// .//src/auth/public.decorator.ts
+// src/auth/public.decorator.ts
 
 import { SetMetadata } from '@nestjs/common';
 
