@@ -1,9 +1,10 @@
 // src/auth/auth.service.ts
 
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRole } from './roles.enum';
 import { User, UserDocument } from './schema/user.schema';
@@ -36,7 +37,7 @@ export class AuthService {
 				await user.save();
 				this.logger.log(`Assigned default role to user ${email}`);
 			}
-			return { email: user.email, role: user.role, token: user.token } as UserDocument;
+			return { id: user.id, email: user.email, role: user.role, token: user.token } as UserDocument;
 		} else {
 			return null;
 		}
@@ -88,16 +89,22 @@ export class AuthService {
 		return user;
 	}
 
-	/**
-	 * Retrieves a user's token based on their email.
-	 * @param email The email of the user.
-	 * @returns The token string.
-	 */
 	async getTokenByEmail(email: string): Promise<string> {
 		const user = await this.userModel.findOne({ email });
 		if (!user) {
 			throw new NotFoundException(`User with email ${email} not found.`);
 		}
 		return user.token;
+	}
+
+	async createUserWithUUID(email: string): Promise<UserDocument> {
+		const existingUser = await this.userModel.findOne({ email });
+		if (existingUser) {
+			throw new ConflictException('User with this email already exists');
+		}
+		const uuid = uuidv4();
+		const user = new this.userModel({ email, uuid, role: UserRole.USER });
+		await user.save();
+		return user;
 	}
 }
