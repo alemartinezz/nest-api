@@ -1,6 +1,6 @@
 // src/auth/dto/update-user.dto.ts
 
-import { IsEmail, IsEnum, IsOptional } from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
 import { UserRole } from '../roles.enum';
 
 export class UpdateUserDto {
@@ -11,4 +11,8 @@ export class UpdateUserDto {
 	@IsEnum(UserRole)
 	@IsOptional()
 	role?: UserRole;
+
+	@IsOptional()
+	@IsString()
+	token?: string;
 }

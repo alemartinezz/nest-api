@@ -45,7 +45,7 @@ export class TokenRateLimitGuard implements CanActivate {
 			}
 
 			// Find user by token
-			const user = await this.authService.findUserByToken(token);
+			const user = await this.authService.getUserByToken(token);
 			if (!user) {
 				this.logger.warn('Invalid token');
 				throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
