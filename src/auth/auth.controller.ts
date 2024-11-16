@@ -1,16 +1,15 @@
 // src/auth/auth.controller.ts
 
-import { BadRequestException, Body, Controller, Get, Post, Put, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, NotFoundException, Post, Put, Query } from '@nestjs/common';
+import { sanitizeObject } from 'src/common/utils/object.util';
+import { UserDocument } from 'src/database/schemas/user.schema';
+import { CreateTokenDto } from 'src/dto/user/create-token.dto';
+import { CreateUserDto } from 'src/dto/user/create-user.dto';
+import { GetUserDto } from 'src/dto/user/get-user.dto';
+import { UpdateUserDto } from 'src/dto/user/update-user.dto';
+import { UserRole } from '../dto/user/roles.enum';
 import { AuthService } from './auth.service';
-import { CreateTokenDto } from './dto/create-token.dto';
-import { CreateUserDto } from './dto/create-user.dto';
-import { GetUserDto } from './dto/get-user';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { Public } from './public.decorator';
-import { UserRole } from './roles.enum';
-import { UserDocument } from './schema/user.schema';
-
-// TODO: Unify getUser for accepting both or either email or id
 
 @Controller('auth')
 export class AuthController {
@@ -18,30 +17,51 @@ export class AuthController {
 
 	@Public()
 	@Get('user')
-	async getUser(@Query() params: GetUserDto): Promise<{ user: UserDocument }> {
+	async getUser(@Query() params: GetUserDto): Promise<{ user: Partial<UserDocument> }> {
 		if (!params.id && !params.email) {
 			throw new BadRequestException('Either id or email must be provided');
 		}
 
-		let user: UserDocument;
+		const user = await this.authService.getUser(params);
 
-		if (params.id) {
-			user = await this.authService.getUser(params);
-		} else {
-			user = await this.authService.getUser(params);
+		if (!user) {
+			throw new NotFoundException(`User with ${params.id ? 'id' : 'email'} ${params.id || params.email} not found.`);
 		}
 
-		return { user };
+		// Sanitize the user object
+		const sanitizedUser = sanitizeObject(user.toObject());
+
+		return { user: sanitizedUser };
 	}
 
 	@Public()
-	@Post('create-user')
-	async createUser(@Body() createUserDto: CreateUserDto): Promise<{ user: UserDocument }> {
+	@Post('user')
+	async createUser(@Body() createUserDto: CreateUserDto): Promise<{ user: Partial<UserDocument> }> {
 		const { email, role } = createUserDto;
 
 		const user = await this.authService.createUser(email, role ?? UserRole.USER);
 
-		return { user };
+		// Sanitize the user object
+		const sanitizedUser = sanitizeObject(user.toObject());
+
+		return { user: sanitizedUser };
+	}
+
+	@Put('user')
+	async updateUserById(@Body('email') id: string, @Body() updates: UpdateUserDto): Promise<{ message: string; user?: Partial<UserDocument> }> {
+		const updatedUser = await this.authService.updateUser(id, updates);
+
+		if (!updatedUser) {
+			throw new BadRequestException('User update failed.');
+		}
+
+		// Define the keys you want to remove
+		const keysToRemove = ['__v']; // Add any additional keys as needed
+
+		// Sanitize the user object
+		const sanitizedUser = sanitizeObject(updatedUser.toObject(), keysToRemove);
+
+		return { message: 'User updated successfully.', user: sanitizedUser };
 	}
 
 	@Post('generate-token')
@@ -51,15 +71,5 @@ export class AuthController {
 		const token: string = await this.authService.generateToken(email);
 
 		return { token };
-	}
-
-	@Put('update-user')
-	async updateUser(@Body('currentEmail') currentEmail: string, @Body() updates: UpdateUserDto): Promise<{ message: string; user?: any }> {
-		const updatedUser = await this.authService.updateUser(currentEmail, updates);
-
-		if (!updatedUser) {
-		}
-
-		return { message: 'User updated successfully.', user: updatedUser };
 	}
 }

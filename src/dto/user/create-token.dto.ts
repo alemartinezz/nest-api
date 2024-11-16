@@ -1,7 +1,7 @@
-// src/auth/dto/create-token.dto.ts
+// src/dto/user/create-token.dto.ts
 
 import { IsEmail, IsEnum, IsNotEmpty } from 'class-validator';
-import { UserRole } from '../roles.enum';
+import { UserRole } from 'src/dto/user/roles.enum';
 
 export class CreateTokenDto {
 	@IsNotEmpty()

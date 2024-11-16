@@ -1,4 +1,4 @@
-// src/auth/mongoose/mongoose.module.ts
+// src/database/mongoose/mongoose.module.ts
 
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

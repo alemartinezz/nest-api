@@ -1,4 +1,4 @@
-// src/auth/redis/redis.service.ts
+// src/database/redis/redis.service.ts
 
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';

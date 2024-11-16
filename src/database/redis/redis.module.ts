@@ -1,4 +1,4 @@
-// src/auth/redis/redis.module.ts
+// src/database/redis/redis.module.ts
 
 import { RedisModule as NestRedisModule, RedisModuleOptions } from '@nestjs-modules/ioredis';
 import { Module } from '@nestjs/common';

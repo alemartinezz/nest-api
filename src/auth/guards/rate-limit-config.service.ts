@@ -1,7 +1,7 @@
 // src/auth/rate-limit.config.ts
 
 import { Injectable } from '@nestjs/common';
-import { UserRole } from '../roles.enum';
+import { UserRole } from '../../dto/user/roles.enum';
 
 export interface RateLimitConfig {
 	maxRequests: number;

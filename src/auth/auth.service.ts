@@ -4,10 +4,10 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { InjectModel } from '@nestjs/mongoose';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
-import { GetUserDto } from './dto/get-user';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UserRole } from './roles.enum';
-import { User, UserDocument } from './schema/user.schema';
+import { User, UserDocument } from '../database/schemas/user.schema';
+import { GetUserDto } from '../dto/user/get-user.dto';
+import { UserRole } from '../dto/user/roles.enum';
+import { UpdateUserDto } from '../dto/user/update-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -16,86 +16,65 @@ export class AuthService {
 	constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
 	async getUser(params: GetUserDto): Promise<UserDocument> {
-		let user: UserDocument;
+		let user: UserDocument | null = null;
 
 		if (params.id) {
-			user = await this.userModel.findById(params.id);
+			// Find by MongoDB ObjectId
+			try {
+				user = await this.userModel.findById(params.id);
+			} catch (error) {
+				this.logger.warn(`Invalid ObjectId format: ${params.id}`);
+				throw new BadRequestException('Invalid id format');
+			}
 		} else if (params.email) {
-			// Ensure email is provided
 			user = await this.userModel.findOne({ email: params.email });
+		} else if (params.token) {
+			user = await this.userModel.findOne({ token: params.token });
 		}
 
-		if (
-			user &&
-			!user.role // If the user has no role, assign the default role
-		) {
+		if (user && !user.role) {
 			user.role = UserRole.USER;
 			await user.save();
 			this.logger.log(`Assigned default role to user ${user.email}`);
 		}
 
-		if (!user) {
-			throw new NotFoundException(`User with ${params.id ? 'id' : 'email'} ${params.id} not found.`);
-		}
-
-		return user as UserDocument;
-	}
-
-	async getUserByToken(token: string): Promise<UserDocument> {
-		const user = await this.userModel.findOne({ token });
-		if (user) {
-			if (!user.role) {
-				user.role = UserRole.USER;
-				await user.save();
-				this.logger.log(`Assigned default role to user ${user.email}`);
-			}
-			return { id: user.id, email: user.email, role: user.role, token: user.token } as UserDocument;
-		} else {
-			return null;
-		}
+		return user;
 	}
 
 	async createUser(email: string, role: UserRole): Promise<UserDocument> {
-		// Check if the email is already in use
-		const existingUser = await this.getUser({ email });
+		this.logger.debug(`Attempting to create user with email: ${email} and role: ${role}`);
+
+		const existingUser: UserDocument | null = await this.getUser({ email });
 
 		if (existingUser) {
+			this.logger.warn(`Email ${email} is already in use.`);
 			throw new BadRequestException(`Email ${email} is already in use.`);
 		}
 
-		// 1. Generate token
-		const token = crypto.randomBytes(16).toString('hex');
+		const token: string = crypto.randomBytes(16).toString('hex');
+		this.logger.debug(`Generated token: ${token} for user: ${email}`);
 
-		// Create the user
-		const user = new this.userModel({ email, token, role });
+		const user: UserDocument = new this.userModel({ email, token, role });
+
+		try {
+			await user.save();
+			this.logger.log(`User created successfully with email: ${email}`);
+		} catch (error) {
+			this.logger.error(`Error creating user with email: ${email}`, error);
+			throw new BadRequestException('Failed to create user due to a database error.');
+		}
 
 		return user;
 	}
 
-	async generateToken(email: string): Promise<string> {
-		const token: string = crypto.randomBytes(16).toString('hex'); // 32 caracteres
-
-		// Verifica si el usuario ya tiene token
-		const existingUser = await this.getUser({ email });
-
-		// Si ya tenia token, se reemplaza
-		if (!existingUser.token) {
-			const updates = { token };
-
-			await this.updateUser(existingUser.id, updates);
-		}
-
-		return token;
-	}
-
-	async updateUser(id: string, updates: UpdateUserDto): Promise<UserDocument | null> {
-		const user = await this.userModel.findById(id);
+	async updateUser(email: string, updates: UpdateUserDto): Promise<UserDocument | null> {
+		const user = await this.userModel.findOne({ email });
 
 		if (!user) {
-			throw new NotFoundException(`User with id: ${id} not found.`);
+			throw new NotFoundException(`User with email: ${email} not found.`);
 		}
 
-		const fieldsToUpdate: Partial<User> = {};
+		const fieldsToUpdate: Partial<UserDocument> = {};
 
 		// Iterate through updates and check for differences
 		for (const [key, value] of Object.entries(updates)) {
@@ -118,14 +97,40 @@ export class AuthService {
 		}
 
 		if (Object.keys(fieldsToUpdate).length === 0) {
-			// No changes detected
-			throw new BadRequestException('No changes detected.');
+			return user;
 		}
 
 		// Perform the update
-		const updatedUser = await this.userModel.findOneAndUpdate({ id }, { $set: fieldsToUpdate }, { new: true });
+		try {
+			const updatedUser = await this.userModel.findByIdAndUpdate(user._id, { $set: fieldsToUpdate }, { new: true });
+			return updatedUser;
+		} catch (error) {
+			this.logger.error(`Error updating user with email: ${email}`, error);
+			throw new BadRequestException('Failed to update user due to a database error.');
+		}
+	}
 
-		return updatedUser;
+	async generateToken(id: string): Promise<string> {
+		const token: string = crypto.randomBytes(16).toString('hex'); // 32 characters
+
+		// Find user by email
+		const existingUser: any = await this.getUser({ id });
+
+		if (!existingUser) {
+			throw new NotFoundException(`User with email: ${id} not found.`);
+		}
+
+		// If the user already has a token, replace it
+		if (existingUser.token) {
+			const updates = { token };
+			await this.updateUser(id, updates);
+		} else {
+			// Assign the new token
+			existingUser.token = token;
+			await existingUser.save();
+		}
+
+		return token;
 	}
 
 	async validateToken(token: string): Promise<boolean> {

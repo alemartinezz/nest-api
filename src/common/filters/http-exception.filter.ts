@@ -1,13 +1,16 @@
 // src/common/filters/http-exception.filter.ts
 
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
-import { ResponseFormat } from '../interceptors/transform-interceptor';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { ResponseFormat } from '../interceptors/transform.interceptor';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+	private readonly logger = new Logger(AllExceptionsFilter.name);
+
 	catch(exception: unknown, host: ArgumentsHost) {
 		const ctx = host.switchToHttp();
 		const response = ctx.getResponse();
+		const request = ctx.getRequest();
 
 		let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
 		let code: string = 'InternalServerError';
@@ -24,6 +27,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
 				messages = Array.isArray(res.message) ? res.message : [res.message];
 				code = res.code || exception.name || HttpStatus[statusCode] || 'HttpException';
 			}
+		} else {
+			// Log unexpected errors
+			this.logger.error('Unhandled exception', exception as any);
 		}
 
 		const metadata = response.getHeaders();

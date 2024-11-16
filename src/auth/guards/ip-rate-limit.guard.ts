@@ -3,7 +3,7 @@
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { format } from 'date-fns';
-import { RedisService } from '../redis/redis.service';
+import { RedisService } from '../../database/redis/redis.service';
 
 @Injectable()
 export class IpRateLimitGuard implements CanActivate {

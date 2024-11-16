@@ -1,4 +1,4 @@
-// src/auth/roles.enum.ts
+// src/dto/user/roles.enum.ts
 
 export enum UserRole {
 	ADMIN = 'admin',
