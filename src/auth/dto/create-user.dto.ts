@@ -8,7 +8,7 @@ export class CreateUserDto {
 	@IsNotEmpty()
 	email: string;
 
-	@IsEnum(UserRole)
 	@IsOptional()
+	@IsEnum(UserRole)
 	role?: UserRole;
 }

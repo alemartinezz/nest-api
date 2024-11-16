@@ -4,6 +4,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { InjectModel } from '@nestjs/mongoose';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
+import { GetUserDto } from './dto/get-user';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRole } from './roles.enum';
 import { User, UserDocument } from './schema/user.schema';
@@ -14,8 +15,16 @@ export class AuthService {
 
 	constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
-	async getUserById(id: string): Promise<UserDocument> {
-		const user = await this.userModel.findById(id);
+	async getUser(params: GetUserDto): Promise<UserDocument> {
+		let user: UserDocument;
+
+		if (params.id) {
+			user = await this.userModel.findById(params.id);
+		} else if (params.email) {
+			// Ensure email is provided
+			user = await this.userModel.findOne({ email: params.email });
+		}
+
 		if (
 			user &&
 			!user.role // If the user has no role, assign the default role
@@ -24,21 +33,12 @@ export class AuthService {
 			await user.save();
 			this.logger.log(`Assigned default role to user ${user.email}`);
 		}
-		return user;
-	}
 
-	async getUserByEmail(email: string): Promise<UserDocument> {
-		const user = await this.userModel.findOne({ email });
-		if (user) {
-			if (!user.role) {
-				user.role = UserRole.USER;
-				await user.save();
-				this.logger.log(`Assigned default role to user ${email}`);
-			}
-			return { id: user.id, email: user.email, role: user.role, token: user.token } as UserDocument;
-		} else {
-			return null;
+		if (!user) {
+			throw new NotFoundException(`User with ${params.id ? 'id' : 'email'} ${params.id} not found.`);
 		}
+
+		return user as UserDocument;
 	}
 
 	async getUserByToken(token: string): Promise<UserDocument> {
@@ -57,7 +57,7 @@ export class AuthService {
 
 	async createUser(email: string, role: UserRole): Promise<UserDocument> {
 		// Check if the email is already in use
-		const existingUser = await this.getUserByEmail(email);
+		const existingUser = await this.getUser({ email });
 
 		if (existingUser) {
 			throw new BadRequestException(`Email ${email} is already in use.`);
@@ -76,7 +76,7 @@ export class AuthService {
 		const token: string = crypto.randomBytes(16).toString('hex'); // 32 caracteres
 
 		// Verifica si el usuario ya tiene token
-		const existingUser = await this.getUserByEmail(email);
+		const existingUser = await this.getUser({ email });
 
 		// Si ya tenia token, se reemplaza
 		if (!existingUser.token) {

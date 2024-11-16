@@ -4,11 +4,11 @@ import { IsEmail, IsEnum, IsNotEmpty } from 'class-validator';
 import { UserRole } from '../roles.enum';
 
 export class CreateTokenDto {
-	@IsEmail()
 	@IsNotEmpty()
+	@IsEmail()
 	email: string;
 
-	@IsEnum(UserRole)
 	@IsNotEmpty()
+	@IsEnum(UserRole)
 	role: UserRole;
 }
