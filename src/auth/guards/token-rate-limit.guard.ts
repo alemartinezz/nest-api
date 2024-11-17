@@ -3,6 +3,7 @@
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { format } from 'date-fns';
+import { Request } from 'express';
 import { RedisService } from '../../database/redis/redis.service';
 import { AuthService } from '../auth.service';
 import { IS_PUBLIC_KEY } from '../public.decorator';
@@ -27,7 +28,7 @@ export class TokenRateLimitGuard implements CanActivate {
 				return true;
 			}
 
-			const request = context.switchToHttp().getRequest();
+			const request = context.switchToHttp().getRequest<Request>();
 			const response = context.switchToHttp().getResponse();
 			const authHeader = request.headers['authorization'];
 
@@ -50,6 +51,8 @@ export class TokenRateLimitGuard implements CanActivate {
 				this.logger.warn('Invalid token');
 				throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
 			}
+
+			request.user = user; // Set the user in the request object
 
 			const { role } = user;
 
