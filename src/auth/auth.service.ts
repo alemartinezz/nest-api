@@ -10,7 +10,6 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
-import { sanitizeObject } from 'src/common/utils/object.util';
 import { User, UserDocument } from '../database/schemas/user.schema';
 import { GetUserDto } from '../dto/user/get-user.dto';
 import { UserRole } from '../dto/user/roles.enum';
@@ -24,7 +23,7 @@ export class AuthService {
 		@InjectModel(User.name) private userModel: Model<UserDocument>
 	) {}
 
-	async getUser(params: GetUserDto): Promise<Partial<UserDocument>> {
+	async getUser(params: GetUserDto): Promise<UserDocument> {
 		if (!params.id && !params.email && !params.token) {
 			throw new BadRequestException(
 				'At least one of id, email, or token must be provided.'
@@ -53,20 +52,19 @@ export class AuthService {
 			this.logger.log(`Assigned default role to user ${user.email}`);
 		}
 
-		const sanitizedUser = sanitizeObject(user.toObject());
-		return sanitizedUser;
+		return user;
 	}
 
 	async createUser(
 		email: string,
-		role: UserRole
-	): Promise<Partial<UserDocument>> {
-		this.logger.debug(
-			`Attempting to create user with email: ${email} and role: ${role}`
-		);
+		password: string
+	): Promise<UserDocument> {
+		this.logger.debug(`Attempting to create user with email: ${email}`);
 
+		// 1. Normalize input
 		email = email.toLowerCase();
 
+		// 2. Check if user already exists
 		const existingUser = await this.userModel.findOne({ email }).exec();
 		if (existingUser) {
 			this.logger.warn(`Email ${email} is already in use.`);
@@ -75,10 +73,14 @@ export class AuthService {
 			);
 		}
 
-		const token: string = crypto.randomBytes(16).toString('hex');
-		this.logger.debug(`Generated token: ${token} for user: ${email}`);
+		// 3. Hash password
+		const salt = crypto.randomBytes(16).toString('hex');
+		password = crypto
+			.pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+			.toString('hex');
 
-		const user = new this.userModel({ email, token, role });
+		// 4. Create user
+		const user = new this.userModel({ email, password });
 
 		try {
 			await user.save();
@@ -95,15 +97,14 @@ export class AuthService {
 			);
 		}
 
-		const sanitizedUser = sanitizeObject(user.toObject());
-		return sanitizedUser;
+		return user;
 	}
 
 	async updateUser(
 		authenticatedUser: UserDocument,
 		params: GetUserDto,
 		updates: UpdateUserDto
-	): Promise<{ user: Partial<UserDocument>; updated: boolean }> {
+	): Promise<{ user: UserDocument; updated: boolean }> {
 		if (
 			(params.id && params.id !== authenticatedUser._id.toString()) ||
 			(params.email && params.email !== authenticatedUser.email)
@@ -149,8 +150,7 @@ export class AuthService {
 		}
 
 		if (Object.keys(fieldsToUpdate).length === 0) {
-			const sanitizedUser = sanitizeObject(user.toObject(), ['__v']);
-			return { user: sanitizedUser, updated: false };
+			return { user, updated: false };
 		}
 
 		try {
@@ -160,10 +160,7 @@ export class AuthService {
 				{ new: true }
 			);
 
-			const sanitizedUser = sanitizeObject(updatedUser.toObject(), [
-				'__v'
-			]);
-			return { user: sanitizedUser, updated: true };
+			return { user: updatedUser, updated: true };
 		} catch (error) {
 			this.logger.error(
 				`Error updating user with id ${userId}.`,

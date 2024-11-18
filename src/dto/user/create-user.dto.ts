@@ -1,14 +1,26 @@
 // src/dto/user/create-user.dto.ts
 
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
-import { UserRole } from './roles.enum';
+import {
+	IsEmail,
+	IsNotEmpty,
+	IsString,
+	Matches,
+	MaxLength,
+	MinLength
+} from 'class-validator';
 
 export class CreateUserDto {
 	@IsEmail()
 	@IsNotEmpty()
 	email: string;
 
-	@IsOptional()
-	@IsEnum(UserRole)
-	role?: UserRole;
+	@IsString()
+	@IsNotEmpty()
+	@MinLength(8)
+	@MaxLength(30)
+	@Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
+		message:
+			'Password too weak: must contain at least 1 uppercase letter, 1 lowercase letter, 1 number or special character, and be at least 8 characters long.'
+	})
+	password: string;
 }

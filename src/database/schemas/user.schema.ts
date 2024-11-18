@@ -12,6 +12,9 @@ export class User {
 	email: string;
 
 	@Prop({ required: true })
+	password: string;
+
+	@Prop({ unique: true, nullable: true })
 	token: string;
 
 	@Prop({ enum: UserRole, default: UserRole.USER })
@@ -22,6 +25,12 @@ export class User {
 
 	@Prop({ required: false })
 	updatedAt: Date;
+}
+
+declare module 'express-serve-static-core' {
+	interface Request {
+		user?: UserDocument;
+	}
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
