@@ -17,6 +17,7 @@ import { ChangePasswordDto } from '../dto/user/change-password.dto';
 import { GetUserDto } from '../dto/user/get-user.dto';
 import { UserRole } from '../dto/user/roles.enum';
 import { UpdateUserDto } from '../dto/user/update-user.dto';
+import { RateLimitConfigService } from './guards/rate-limit-config.service';
 
 @Injectable()
 export class AuthService {
@@ -24,7 +25,8 @@ export class AuthService {
 
 	constructor(
 		@InjectModel(User.name) private userModel: Model<UserDocument>,
-		private readonly mailService: MailService
+		private readonly mailService: MailService,
+		private readonly rateLimitConfigService: RateLimitConfigService // Injected here
 	) {}
 
 	async signUp(email: string, password: string): Promise<UserDocument> {
@@ -64,7 +66,17 @@ export class AuthService {
 			Date.now() + 24 * 60 * 60 * 1000
 		); // Expires in 24 hours
 
-		// Create user with verification code
+		// Get rate limits based on user role
+		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(
+			UserRole.USER
+		);
+		const { tokenCurrentLimit, tokenExpirationDays } = rateLimitConfig;
+
+		const tokenExpiration = new Date(
+			Date.now() + tokenExpirationDays * 24 * 60 * 60 * 1000
+		);
+
+		// Create user with token limits
 		const user = new this.userModel({
 			email,
 			emailVerified: false,
@@ -72,7 +84,11 @@ export class AuthService {
 			verificationCodeExpires,
 			password: hashedPassword,
 			role: UserRole.USER,
-			token: crypto.randomBytes(16).toString('hex')
+			token: crypto.randomBytes(16).toString('hex'),
+			tokenTotalUsage: 0,
+			tokenCurrentUsage: 0,
+			tokenCurrentLimit,
+			tokenExpiration
 		});
 
 		try {
@@ -293,9 +309,25 @@ export class AuthService {
 	async regenerateToken(authenticatedUser: UserDocument): Promise<string> {
 		const token = crypto.randomBytes(16).toString('hex');
 
+		// Get rate limits based on user role
+		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(
+			authenticatedUser.role
+		);
+		const { tokenCurrentLimit, tokenExpirationDays } = rateLimitConfig;
+
+		// Set token expiration date
+		const tokenExpiration = new Date(
+			Date.now() + tokenExpirationDays * 24 * 60 * 60 * 1000
+		);
+
 		try {
 			await this.userModel.findByIdAndUpdate(authenticatedUser._id, {
-				$set: { token }
+				$set: {
+					token,
+					tokenCurrentUsage: 0,
+					tokenCurrentLimit,
+					tokenExpiration
+				}
 			});
 		} catch (error) {
 			this.logger.error(

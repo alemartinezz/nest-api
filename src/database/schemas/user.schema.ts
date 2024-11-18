@@ -29,6 +29,21 @@ export class User {
 	@Prop({ unique: true, nullable: true })
 	token?: string;
 
+	@Prop({ type: Date })
+	tokenExpiration: Date;
+
+	@Prop({ type: Number, default: 0 })
+	tokenTotalUsage: number;
+
+	@Prop({ type: Number, default: 0 })
+	tokenCurrentUsage: number;
+
+	@Prop({ type: Number })
+	tokenCurrentLimit: number;
+
+	@Prop({ type: Number })
+	tokenCurrentLeft: number;
+
 	@Prop({ required: false })
 	createdAt: Date;
 
