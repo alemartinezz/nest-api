@@ -9,6 +9,7 @@ import { User, UserSchema } from '../database/schemas/user.schema';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { RateLimitConfigService } from './guards/rate-limit-config.service';
+import { SuperUserService } from './super-user.service';
 
 @Module({
 	imports: [
@@ -17,7 +18,7 @@ import { RateLimitConfigService } from './guards/rate-limit-config.service';
 		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
 		MailModule
 	],
-	providers: [AuthService, RateLimitConfigService],
+	providers: [AuthService, RateLimitConfigService, SuperUserService],
 	controllers: [AuthController],
 	exports: [AuthService, RateLimitConfigService]
 })

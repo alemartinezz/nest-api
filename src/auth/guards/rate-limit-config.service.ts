@@ -13,6 +13,12 @@ export interface RateLimitConfig {
 @Injectable()
 export class RateLimitConfigService {
 	private readonly rateLimits: Record<UserRole, RateLimitConfig> = {
+		[UserRole.SUPER]: {
+			maxRequests: Infinity,
+			windowSizeInSeconds: 0,
+			tokenCurrentLimit: Infinity,
+			tokenExpirationDays: Infinity
+		},
 		[UserRole.ADMIN]: {
 			maxRequests: 10000,
 			windowSizeInSeconds: 3600, // 10k per hour

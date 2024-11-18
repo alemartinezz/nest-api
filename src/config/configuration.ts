@@ -4,6 +4,7 @@ import { Logger } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import {
 	IsBoolean,
+	IsEmail,
 	IsIn,
 	IsNotEmpty,
 	IsNumber,
@@ -125,6 +126,22 @@ export class EnvConfig {
 	@IsString()
 	@IsNotEmpty()
 	EMAIL_FROM: string;
+
+	// ---------------------- //
+	// -------- Super ------- //
+	// ---------------------- //
+
+	@IsString()
+	@IsNotEmpty()
+	SUPER_TOKEN: string;
+
+	@IsEmail()
+	@IsNotEmpty()
+	SUPER_EMAIL: string;
+
+	@IsString()
+	@IsNotEmpty()
+	SUPER_PASSWORD: string;
 }
 
 export function validateEnv(configEnv: Record<string, unknown>): EnvConfig {
@@ -149,7 +166,7 @@ export function validateEnv(configEnv: Record<string, unknown>): EnvConfig {
 		throw new Error(`Environment validation failed: ${errorMessages}`);
 	}
 
-	// URL-encode the username y password
+	// URL-encode the username and password
 	const encodedUsername = encodeURIComponent(
 		validatedConfig.MONGO_USERNAME
 	);
@@ -157,7 +174,7 @@ export function validateEnv(configEnv: Record<string, unknown>): EnvConfig {
 		validatedConfig.MONGO_PASSWORD
 	);
 
-	// Construir la URI de MongoDB
+	// Construct the MongoDB URI
 	validatedConfig.MONGO_URI = `mongodb://${encodedUsername}:${encodedPassword}@${validatedConfig.MONGO_HOST}:${validatedConfig.MONGO_PORT}/${validatedConfig.MONGO_DATABASE}?authSource=admin`;
 	console.log(`MongoDB URI: ${validatedConfig.MONGO_URI}`);
 

@@ -10,6 +10,7 @@ import { validateEnv } from './configuration';
 			isGlobal: true,
 			validate: validateEnv
 		})
-	]
+	],
+	exports: [NestConfigModule] // Export ConfigModule
 })
 export class MyConfigModule {}

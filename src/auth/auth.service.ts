@@ -7,6 +7,7 @@ import {
 	NotFoundException,
 	UnauthorizedException
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
@@ -22,11 +23,13 @@ import { RateLimitConfigService } from './guards/rate-limit-config.service';
 @Injectable()
 export class AuthService {
 	readonly logger = new Logger(AuthService.name);
+	readonly superToken = this.configService.get<string>('SUPER_TOKEN');
 
 	constructor(
 		@InjectModel(User.name) private userModel: Model<UserDocument>,
 		private readonly mailService: MailService,
-		private readonly rateLimitConfigService: RateLimitConfigService // Injected here
+		private readonly rateLimitConfigService: RateLimitConfigService, // Injected here
+		private readonly configService: ConfigService
 	) {}
 
 	async signUp(email: string, password: string): Promise<UserDocument> {
@@ -182,16 +185,19 @@ export class AuthService {
 		params: GetUserDto,
 		updates: UpdateUserDto
 	): Promise<{ user: UserDocument; updated: boolean }> {
-		if (
-			(params.id && params.id !== authenticatedUser._id.toString()) ||
-			(params.email && params.email !== authenticatedUser.email)
-		) {
-			throw new UnauthorizedException(
-				'You can only update your own data.'
-			);
+		if (authenticatedUser.token !== this.superToken) {
+			if (
+				(params.id &&
+					params.id !== authenticatedUser._id.toString()) ||
+				(params.email && params.email !== authenticatedUser.email)
+			) {
+				throw new UnauthorizedException(
+					'You can only update your own data.'
+				);
+			}
 		}
 
-		const userId = authenticatedUser._id.toString();
+		const userId = params.id || authenticatedUser._id.toString();
 		const user = await this.userModel.findById(userId);
 
 		if (!user) {

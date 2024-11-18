@@ -72,30 +72,36 @@ export class TokenRateLimitGuard implements CanActivate {
 				);
 			}
 
-			// Check token expiration
-			if (user.tokenExpiration && user.tokenExpiration < new Date()) {
-				this.logger.warn(
-					`Token ${user.token} has expired for user ${user.email}`
-				);
-				throw new HttpException(
-					'Token has expired.',
-					HttpStatus.UNAUTHORIZED
-				);
-			}
+			// Skip token expiration and usage checks for SUPER role
+			if (user.role !== 'super') {
+				// Check token expiration
+				if (
+					user.tokenExpiration &&
+					user.tokenExpiration < new Date()
+				) {
+					this.logger.warn(
+						`Token ${user.token} has expired for user ${user.email}`
+					);
+					throw new HttpException(
+						'Token has expired.',
+						HttpStatus.UNAUTHORIZED
+					);
+				}
 
-			// Enforce token usage limits
-			if (user.tokenCurrentUsage >= user.tokenCurrentLimit) {
-				this.logger.warn(
-					`Token ${user.token} has reached its usage limit for user ${user.email}`
-				);
-				throw new HttpException(
-					'Token usage limit exceeded.',
-					HttpStatus.TOO_MANY_REQUESTS
-				);
-			}
+				// Enforce token usage limits
+				if (user.tokenCurrentUsage >= user.tokenCurrentLimit) {
+					this.logger.warn(
+						`Token ${user.token} has reached its usage limit for user ${user.email}`
+					);
+					throw new HttpException(
+						'Token usage limit exceeded.',
+						HttpStatus.TOO_MANY_REQUESTS
+					);
+				}
 
-			// Increment usage counters
-			await this.incrementTokenUsage(user);
+				// Increment usage counters
+				await this.incrementTokenUsage(user);
+			}
 
 			request.user = user; // Set the user in the request object
 
@@ -108,58 +114,67 @@ export class TokenRateLimitGuard implements CanActivate {
 			const { maxRequests, windowSizeInSeconds } = rateLimitConfig;
 
 			const key = `token-rate-limit:${user.token}`;
-			const currentCount = await this.redisService.redis.incr(key);
 
-			if (currentCount === 1) {
-				await this.redisService.redis.expire(
-					key,
-					windowSizeInSeconds
+			// Skip rate limiting for SUPER role
+			if (role !== 'super') {
+				const currentCount = await this.redisService.redis.incr(key);
+
+				if (currentCount === 1) {
+					await this.redisService.redis.expire(
+						key,
+						windowSizeInSeconds
+					);
+				}
+
+				const ttl = await this.redisService.redis.ttl(key);
+				const resetTimestamp = Math.floor(Date.now() / 1000) + ttl;
+				const formattedResetTime = format(
+					new Date(resetTimestamp * 1000),
+					'EEE d MMM HH:mm:ss'
 				);
-			}
+				const remaining = Math.max(maxRequests - currentCount, 0);
 
-			const ttl = await this.redisService.redis.ttl(key);
-			const resetTimestamp = Math.floor(Date.now() / 1000) + ttl;
-			const formattedResetTime = format(
-				new Date(resetTimestamp * 1000),
-				'EEE d MMM HH:mm:ss'
-			);
-			const remaining = Math.max(maxRequests - currentCount, 0);
+				// Set response headers
+				response.set('X-RateLimit-Limit', maxRequests.toString());
+				response.set('X-RateLimit-Remaining', remaining.toString());
+				response.set('X-RateLimit-Reset', formattedResetTime);
 
-			// Set response headers
-			response.set('X-RateLimit-Limit', maxRequests.toString());
-			response.set('X-RateLimit-Remaining', remaining.toString());
-			response.set('X-RateLimit-Reset', formattedResetTime);
-
-			// Set custom headers for token usage
-			const tokenCurrentLeft =
-				user.tokenCurrentLimit - user.tokenCurrentUsage;
-			response.set(
-				'X-Token-Current-Limit',
-				user.tokenCurrentLimit.toString()
-			);
-			response.set(
-				'X-Token-Current-Usage',
-				user.tokenCurrentUsage.toString()
-			);
-			response.set(
-				'X-Token-Current-Left',
-				tokenCurrentLeft.toString()
-			);
-			response.set(
-				'X-Token-Expiration',
-				user.tokenExpiration
-					? user.tokenExpiration.toISOString()
-					: ''
-			);
-
-			if (currentCount > maxRequests) {
-				this.logger.warn(
-					`Token ${user.token} with role ${role} has exceeded the rate limit`
+				// Set custom headers for token usage
+				const tokenCurrentLeft =
+					user.tokenCurrentLimit - user.tokenCurrentUsage;
+				response.set(
+					'X-Token-Current-Limit',
+					user.tokenCurrentLimit.toString()
 				);
-				throw new HttpException(
-					'Too many requests, please try again later.',
-					HttpStatus.TOO_MANY_REQUESTS
+				response.set(
+					'X-Token-Current-Usage',
+					user.tokenCurrentUsage.toString()
 				);
+				response.set(
+					'X-Token-Current-Left',
+					tokenCurrentLeft.toString()
+				);
+				response.set(
+					'X-Token-Expiration',
+					user.tokenExpiration
+						? user.tokenExpiration.toISOString()
+						: ''
+				);
+
+				if (currentCount > maxRequests) {
+					this.logger.warn(
+						`Token ${user.token} with role ${role} has exceeded the rate limit`
+					);
+					throw new HttpException(
+						'Too many requests, please try again later.',
+						HttpStatus.TOO_MANY_REQUESTS
+					);
+				}
+			} else {
+				// For super user, set headers indicating unlimited access
+				response.set('X-RateLimit-Limit', 'unlimited');
+				response.set('X-RateLimit-Remaining', 'unlimited');
+				response.set('X-RateLimit-Reset', 'never');
 			}
 
 			return true;
