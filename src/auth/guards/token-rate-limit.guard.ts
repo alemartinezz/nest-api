@@ -11,6 +11,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { format } from 'date-fns';
 import { Request } from 'express';
+import { UserRole } from 'src/dto/user/roles.enum';
 import { RedisService } from '../../database/redis/redis.service';
 import { UserDocument } from '../../database/schemas/user.schema';
 import { AuthService } from '../auth.service';
@@ -35,15 +36,16 @@ export class TokenRateLimitGuard implements CanActivate {
 				IS_PUBLIC_KEY,
 				context.getHandler()
 			);
-			if (isPublic) {
-				return true;
-			}
 
 			const request = context.switchToHttp().getRequest<Request>();
 			const response = context.switchToHttp().getResponse();
 			const authHeader = request.headers['authorization'];
 
 			if (!authHeader) {
+				if (isPublic) {
+					request.user = { role: UserRole.GUEST }; // Assign Guest role to unauthenticated users
+					return true;
+				}
 				this.logger.warn('Authorization header missing');
 				throw new HttpException(
 					'Authorization header is required',

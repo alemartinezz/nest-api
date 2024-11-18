@@ -3,6 +3,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { IpRateLimitGuard } from 'src/auth/guards/ip-rate-limit.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard'; // Import RolesGuard
 import { TokenRateLimitGuard } from 'src/auth/guards/token-rate-limit.guard';
 import { MyConfigModule } from 'src/config/config.module';
 import { MyMongooseModule } from 'src/database/mongoose/mongoose.module';
@@ -23,6 +24,10 @@ import { AppService } from './app.service';
 		{
 			provide: APP_GUARD,
 			useClass: TokenRateLimitGuard
+		},
+		{
+			provide: APP_GUARD,
+			useClass: RolesGuard // Add RolesGuard here
 		}
 	]
 })

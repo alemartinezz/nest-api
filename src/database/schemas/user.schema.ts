@@ -51,10 +51,4 @@ export class User {
 	updatedAt: Date;
 }
 
-declare module 'express-serve-static-core' {
-	interface Request {
-		user?: UserDocument;
-	}
-}
-
 export const UserSchema = SchemaFactory.createForClass(User);

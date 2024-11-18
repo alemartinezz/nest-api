@@ -20,13 +20,13 @@ import { signUpDto } from 'src/dto/user/sign-up.dto';
 import { UpdateUserDto } from 'src/dto/user/update-user.dto';
 import { VerifyEmailDto } from 'src/dto/user/verify-email.dto';
 import { AuthService } from './auth.service';
-import { Public } from './public.decorator';
+import { Guest, User as UserRoleDecorator } from './roles.decorator'; // Import role decorators
 
 @Controller('auth')
 export class AuthController {
 	constructor(private readonly authService: AuthService) {}
 
-	@Public()
+	@Guest()
 	@Get('user')
 	async getUser(
 		@Query() params: GetUserDto
@@ -38,7 +38,7 @@ export class AuthController {
 		return { user: sanitizedUser };
 	}
 
-	@Public()
+	@Guest()
 	@Post('signup')
 	async signUp(
 		@Body() signUpDto: signUpDto
@@ -52,7 +52,7 @@ export class AuthController {
 		return { user: sanitizedUser };
 	}
 
-	@Public()
+	@Guest()
 	@Post('login')
 	@HttpCode(200)
 	async login(
@@ -67,6 +67,7 @@ export class AuthController {
 		return { user: sanitizedUser };
 	}
 
+	@UserRoleDecorator()
 	@Put('user')
 	async updateUser(
 		@Req() request: Request,
@@ -90,6 +91,7 @@ export class AuthController {
 		return { message, user: sanitizedUser };
 	}
 
+	@UserRoleDecorator()
 	@Put('reset-password')
 	async resetPassword(
 		@Req() request: Request,
@@ -105,6 +107,7 @@ export class AuthController {
 		return { message: 'Password updated successfully.' };
 	}
 
+	@UserRoleDecorator()
 	@Get('regenerate-token')
 	async generateToken(
 		@Req() request: Request
@@ -117,7 +120,7 @@ export class AuthController {
 		return { token };
 	}
 
-	@Public()
+	@Guest()
 	@Post('verify-email')
 	async verifyEmail(
 		@Body() verifyEmailDto: VerifyEmailDto
@@ -129,7 +132,7 @@ export class AuthController {
 		return { message: 'Email verified successfully.' };
 	}
 
-	@Public()
+	@Guest()
 	@Post('resend-verification-code')
 	async resendVerificationCode(
 		@Body() resendVerificationDto: ResendVerificationDto
