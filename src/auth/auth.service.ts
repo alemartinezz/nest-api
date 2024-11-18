@@ -11,6 +11,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
+import { MailService } from 'src/notifications/mail/mail.service';
 import { User, UserDocument } from '../database/schemas/user.schema';
 import { ChangePasswordDto } from '../dto/user/change-password.dto';
 import { GetUserDto } from '../dto/user/get-user.dto';
@@ -22,7 +23,8 @@ export class AuthService {
 	readonly logger = new Logger(AuthService.name);
 
 	constructor(
-		@InjectModel(User.name) private userModel: Model<UserDocument>
+		@InjectModel(User.name) private userModel: Model<UserDocument>,
+		private readonly mailService: MailService
 	) {}
 
 	async signUp(email: string, password: string): Promise<UserDocument> {
@@ -54,17 +56,32 @@ export class AuthService {
 			throw new BadRequestException('Failed to hash password.');
 		}
 
-		// 4. Create user with email and hashed password
+		// Generate verification code
+		const verificationCode = Math.floor(
+			100000 + Math.random() * 900000
+		).toString(); // 6-digit code
+		const verificationCodeExpires = new Date(
+			Date.now() + 24 * 60 * 60 * 1000
+		); // Expires in 24 hours
+
+		// Create user with verification code
 		const user = new this.userModel({
 			email,
 			emailVerified: false,
+			verificationCode,
+			verificationCodeExpires,
 			password: hashedPassword,
-			token: crypto.randomBytes(16).toString('hex'),
-			role: UserRole.USER
+			role: UserRole.USER,
+			token: crypto.randomBytes(16).toString('hex')
 		});
 
 		try {
 			await user.save();
+			// Send verification email
+			await this.mailService.sendVerificationEmail(
+				email,
+				verificationCode
+			);
 			this.logger.log(
 				`User created successfully with email: ${email}`
 			);
@@ -291,5 +308,72 @@ export class AuthService {
 		}
 
 		return token;
+	}
+
+	async verifyEmail(email: string, code: string): Promise<void> {
+		email = email.toLowerCase();
+
+		const user = await this.userModel.findOne({ email });
+
+		if (!user) {
+			throw new NotFoundException(
+				`User with email ${email} not found.`
+			);
+		}
+
+		if (user.emailVerified) {
+			throw new BadRequestException('Email is already verified.');
+		}
+
+		if (
+			!user.verificationCode ||
+			!user.verificationCodeExpires ||
+			user.verificationCode !== code
+		) {
+			throw new BadRequestException('Invalid verification code.');
+		}
+
+		if (user.verificationCodeExpires < new Date()) {
+			throw new BadRequestException('Verification code has expired.');
+		}
+
+		user.emailVerified = true;
+		user.verificationCode = undefined;
+		user.verificationCodeExpires = undefined;
+
+		await user.save();
+	}
+
+	async resendVerificationCode(email: string): Promise<void> {
+		email = email.toLowerCase();
+
+		const user = await this.userModel.findOne({ email });
+
+		if (!user) {
+			throw new NotFoundException(
+				`User with email ${email} not found.`
+			);
+		}
+
+		if (user.emailVerified) {
+			throw new BadRequestException('Email is already verified.');
+		}
+
+		const verificationCode = Math.floor(
+			100000 + Math.random() * 900000
+		).toString();
+		const verificationCodeExpires = new Date(
+			Date.now() + 24 * 60 * 60 * 1000
+		);
+
+		user.verificationCode = verificationCode;
+		user.verificationCodeExpires = verificationCodeExpires;
+
+		await user.save();
+
+		await this.mailService.sendVerificationEmail(
+			email,
+			verificationCode
+		);
 	}
 }

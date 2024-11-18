@@ -2,7 +2,15 @@
 
 import { Logger } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
-import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
+import {
+	IsBoolean,
+	IsIn,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsString,
+	validateSync
+} from 'class-validator';
 
 export class EnvConfig {
 	@IsString()
@@ -22,6 +30,22 @@ export class EnvConfig {
 	@IsNotEmpty()
 	PROTOCOL: string;
 
+	// ---------------------- //
+	// - Encryption Config -- //
+	// ---------------------- //
+
+	@IsString()
+	@IsNotEmpty()
+	ENCRYPTION_KEY: string;
+
+	@IsString()
+	@IsNotEmpty()
+	IV_HEX: string;
+
+	// ---------------------- //
+	// ----- Throttling ----- //
+	// ---------------------- //
+
 	@IsNumber()
 	@IsNotEmpty()
 	IP_RATE_LIMIT_MAX: number;
@@ -29,6 +53,10 @@ export class EnvConfig {
 	@IsNumber()
 	@IsNotEmpty()
 	IP_RATE_LIMIT_WINDOW: number;
+
+	// ---------------------- //
+	// ------- Redis -------- //
+	// ---------------------- //
 
 	@IsString()
 	@IsNotEmpty()
@@ -41,6 +69,10 @@ export class EnvConfig {
 	@IsString()
 	@IsNotEmpty()
 	REDIS_PASSWORD: string;
+
+	// ---------------------- //
+	// ----- Mongo Config --- //
+	// ---------------------- //
 
 	@IsString()
 	@IsNotEmpty()
@@ -62,17 +94,37 @@ export class EnvConfig {
 	@IsNotEmpty()
 	MONGO_DATABASE: string;
 
-	@IsString()
-	@IsNotEmpty()
-	ENCRYPTION_KEY: string;
-
-	@IsString()
-	@IsNotEmpty()
-	IV_HEX: string;
-
 	@IsOptional()
 	@IsString()
 	MONGO_URI?: string;
+
+	// ---------------------- //
+	// ----- Email Config --- //
+	// ---------------------- //
+
+	@IsString()
+	@IsNotEmpty()
+	EMAIL_HOST: string;
+
+	@IsNumber()
+	@IsNotEmpty()
+	EMAIL_PORT: number;
+
+	@IsBoolean()
+	@IsNotEmpty()
+	EMAIL_SECURE: boolean;
+
+	@IsString()
+	@IsNotEmpty()
+	EMAIL_USER: string;
+
+	@IsString()
+	@IsNotEmpty()
+	EMAIL_PASSWORD: string;
+
+	@IsString()
+	@IsNotEmpty()
+	EMAIL_FROM: string;
 }
 
 export function validateEnv(configEnv: Record<string, unknown>): EnvConfig {
@@ -85,15 +137,25 @@ export function validateEnv(configEnv: Record<string, unknown>): EnvConfig {
 	});
 
 	if (errors.length > 0) {
-		const errorMessages = errors.map((error) => Object.values(error.constraints || {}).join(', ')).join('; ');
+		const errorMessages = errors
+			.map((error) =>
+				Object.values(error.constraints || {}).join(', ')
+			)
+			.join('; ');
 		const logger = new Logger(EnvConfig.name);
-		logger.error(`❌ Failed to validate environment variables: ${errorMessages}`);
+		logger.error(
+			`❌ Failed to validate environment variables: ${errorMessages}`
+		);
 		throw new Error(`Environment validation failed: ${errorMessages}`);
 	}
 
 	// URL-encode the username y password
-	const encodedUsername = encodeURIComponent(validatedConfig.MONGO_USERNAME);
-	const encodedPassword = encodeURIComponent(validatedConfig.MONGO_PASSWORD);
+	const encodedUsername = encodeURIComponent(
+		validatedConfig.MONGO_USERNAME
+	);
+	const encodedPassword = encodeURIComponent(
+		validatedConfig.MONGO_PASSWORD
+	);
 
 	// Construir la URI de MongoDB
 	validatedConfig.MONGO_URI = `mongodb://${encodedUsername}:${encodedPassword}@${validatedConfig.MONGO_HOST}:${validatedConfig.MONGO_PORT}/${validatedConfig.MONGO_DATABASE}?authSource=admin`;

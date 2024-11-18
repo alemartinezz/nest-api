@@ -15,8 +15,10 @@ import { sanitizeObject } from 'src/common/utils/object.util';
 import { UserDocument } from 'src/database/schemas/user.schema';
 import { ChangePasswordDto } from 'src/dto/user/change-password.dto';
 import { GetUserDto } from 'src/dto/user/get-user.dto';
+import { ResendVerificationDto } from 'src/dto/user/resend-verification.dto';
 import { signUpDto } from 'src/dto/user/sign-up.dto';
 import { UpdateUserDto } from 'src/dto/user/update-user.dto';
+import { VerifyEmailDto } from 'src/dto/user/verify-email.dto';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 
@@ -113,5 +115,29 @@ export class AuthController {
 			await this.authService.regenerateToken(authenticatedUser);
 
 		return { token };
+	}
+
+	@Public()
+	@Post('verify-email')
+	async verifyEmail(
+		@Body() verifyEmailDto: VerifyEmailDto
+	): Promise<{ message: string }> {
+		const { email, code } = verifyEmailDto;
+
+		await this.authService.verifyEmail(email, code);
+
+		return { message: 'Email verified successfully.' };
+	}
+
+	@Public()
+	@Post('resend-verification-code')
+	async resendVerificationCode(
+		@Body() resendVerificationDto: ResendVerificationDto
+	): Promise<{ message: string }> {
+		const { email } = resendVerificationDto;
+
+		await this.authService.resendVerificationCode(email);
+
+		return { message: 'Verification code resent successfully.' };
 	}
 }

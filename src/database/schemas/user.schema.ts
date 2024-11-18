@@ -14,6 +14,12 @@ export class User {
 	@Prop({ required: true, default: false })
 	emailVerified: boolean;
 
+	@Prop()
+	verificationCode?: string;
+
+	@Prop()
+	verificationCodeExpires?: Date;
+
 	@Prop({ required: true })
 	password: string;
 
