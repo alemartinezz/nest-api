@@ -4,6 +4,7 @@ import {
 	Body,
 	Controller,
 	Get,
+	HttpCode,
 	Post,
 	Put,
 	Query,
@@ -12,9 +13,9 @@ import {
 import { Request } from 'express';
 import { sanitizeObject } from 'src/common/utils/object.util';
 import { UserDocument } from 'src/database/schemas/user.schema';
-import { CreateTokenDto } from 'src/dto/user/create-token.dto';
-import { CreateUserDto } from 'src/dto/user/create-user.dto';
+import { ChangePasswordDto } from 'src/dto/user/change-password.dto';
 import { GetUserDto } from 'src/dto/user/get-user.dto';
+import { signUpDto } from 'src/dto/user/sign-up.dto';
 import { UpdateUserDto } from 'src/dto/user/update-user.dto';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
@@ -36,13 +37,28 @@ export class AuthController {
 	}
 
 	@Public()
-	@Post('user')
-	async createUser(
-		@Body() createUserDto: CreateUserDto
+	@Post('signup')
+	async signUp(
+		@Body() signUpDto: signUpDto
 	): Promise<{ user: Partial<UserDocument> }> {
-		const { email, password } = createUserDto;
+		const { email, password } = signUpDto;
 
-		const user = await this.authService.createUser(email, password);
+		const user = await this.authService.signUp(email, password);
+
+		const sanitizedUser = sanitizeObject(user.toObject());
+
+		return { user: sanitizedUser };
+	}
+
+	@Public()
+	@Post('login')
+	@HttpCode(200)
+	async login(
+		@Body() loginDto: signUpDto
+	): Promise<{ user: Partial<UserDocument> }> {
+		const { email, password } = loginDto;
+
+		const user = await this.authService.login(email, password);
 
 		const sanitizedUser = sanitizeObject(user.toObject());
 
@@ -63,7 +79,7 @@ export class AuthController {
 			updates
 		);
 
-		const sanitizedUser = sanitizeObject(user.toObject(), ['__v']);
+		const sanitizedUser = sanitizeObject(user.toObject());
 
 		const message = updated
 			? 'User updated successfully.'
@@ -72,13 +88,29 @@ export class AuthController {
 		return { message, user: sanitizedUser };
 	}
 
-	@Post('generate-token')
-	async generateToken(
-		@Body() createTokenDto: CreateTokenDto
-	): Promise<{ token: string }> {
-		const { email } = createTokenDto;
+	@Put('reset-password')
+	async resetPassword(
+		@Req() request: Request,
+		@Body() changePasswordDto: ChangePasswordDto
+	): Promise<{ message: string }> {
+		const authenticatedUser = request.user;
 
-		const token: string = await this.authService.generateToken(email);
+		await this.authService.resetPassword(
+			authenticatedUser,
+			changePasswordDto
+		);
+
+		return { message: 'Password updated successfully.' };
+	}
+
+	@Get('regenerate-token')
+	async generateToken(
+		@Req() request: Request
+	): Promise<{ token: string }> {
+		const authenticatedUser = request.user;
+
+		const token: string =
+			await this.authService.regenerateToken(authenticatedUser);
 
 		return { token };
 	}

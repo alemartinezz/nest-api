@@ -11,14 +11,17 @@ export class User {
 	@Prop({ required: true, unique: true })
 	email: string;
 
+	@Prop({ required: true, default: false })
+	emailVerified: boolean;
+
 	@Prop({ required: true })
 	password: string;
 
-	@Prop({ unique: true, nullable: true })
-	token: string;
-
-	@Prop({ enum: UserRole, default: UserRole.USER })
+	@Prop({ enum: UserRole, default: UserRole.USER, nullable: true })
 	role: UserRole;
+
+	@Prop({ unique: true, nullable: true })
+	token?: string;
 
 	@Prop({ required: false })
 	createdAt: Date;
