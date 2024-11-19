@@ -35,7 +35,7 @@ export class EnvConfig {
 	PROTOCOL: string;
 
 	// ---------------------- //
-	// - Encryption Config -- //
+	// -- Encryption Config -- //
 	// ---------------------- //
 
 	@IsString({ message: 'ENCRYPTION_KEY must be a string.' })
@@ -79,7 +79,7 @@ export class EnvConfig {
 	REDIS_PASSWORD: string;
 
 	// ---------------------- //
-	// ----- Mongo Config --- //
+	// ----- Mongo Config ---- //
 	// ---------------------- //
 
 	@IsString({ message: 'MONGO_USERNAME must be a string.' })
@@ -107,7 +107,7 @@ export class EnvConfig {
 	MONGO_URI?: string;
 
 	// ---------------------- //
-	// ----- Email Config --- //
+	// ----- Email Config ---- //
 	// ---------------------- //
 
 	@IsString({ message: 'EMAIL_HOST must be a string.' })
