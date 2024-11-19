@@ -12,13 +12,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
+import {
+	User,
+	UserDocument
+} from 'src/database/mongoose/schemas/user.schema';
 import { MailService } from 'src/notifications/mail/mail.service';
-import { User, UserDocument } from '../database/schemas/user.schema';
-import { ChangePasswordDto } from '../dto/user/change-password.dto';
-import { GetUserDto } from '../dto/user/get-user.dto';
-import { UserRole } from '../dto/user/roles.enum';
-import { UpdateUserDto } from '../dto/user/update-user.dto';
-import { RateLimitConfigService } from './guards/rate-limit-config.service';
+import { GetUserDto } from 'src/users/dtos/get-user.dto';
+import { UserRole } from 'src/users/dtos/roles.enum';
+import { UpdateUserDto } from 'src/users/dtos/update-user.dto';
+import { ChangePasswordDto } from './dtos/change-password.dto';
+import { RateLimitConfigService } from './services/rate-limit-config.service';
 
 @Injectable()
 export class AuthService {
@@ -28,7 +31,7 @@ export class AuthService {
 	constructor(
 		@InjectModel(User.name) private userModel: Model<UserDocument>,
 		private readonly mailService: MailService,
-		private readonly rateLimitConfigService: RateLimitConfigService, // Injected here
+		private readonly rateLimitConfigService: RateLimitConfigService,
 		private readonly configService: ConfigService
 	) {}
 
@@ -62,16 +65,16 @@ export class AuthService {
 		}
 
 		// Generate verification code
-		const verificationCode = Math.floor(
+		const emailVerificationCode = Math.floor(
 			100000 + Math.random() * 900000
 		).toString(); // 6-digit code
-		const verificationCodeExpires = new Date(
+		const emailVerificationCodeExpires = new Date(
 			Date.now() + 24 * 60 * 60 * 1000
 		); // Expires in 24 hours
 
 		// Get rate limits based on user role
 		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(
-			UserRole.USER
+			UserRole.BASIC
 		);
 		const { tokenCurrentLimit, tokenExpirationDays } = rateLimitConfig;
 
@@ -83,10 +86,10 @@ export class AuthService {
 		const user = new this.userModel({
 			email,
 			emailVerified: false,
-			verificationCode,
-			verificationCodeExpires,
+			emailVerificationCode,
+			emailVerificationCodeExpires,
 			password: hashedPassword,
-			role: UserRole.USER,
+			role: UserRole.BASIC,
 			token: crypto.randomBytes(16).toString('hex'),
 			tokenTotalUsage: 0,
 			tokenCurrentUsage: 0,
@@ -99,7 +102,7 @@ export class AuthService {
 			// Send verification email
 			await this.mailService.sendVerificationEmail(
 				email,
-				verificationCode
+				emailVerificationCode
 			);
 			this.logger.log(
 				`User created successfully with email: ${email}`
@@ -172,7 +175,7 @@ export class AuthService {
 		}
 
 		if (!user.role) {
-			user.role = UserRole.USER;
+			user.role = UserRole.BASIC;
 			await user.save();
 			this.logger.log(`Assigned default role to user ${user.email}`);
 		}
@@ -364,20 +367,20 @@ export class AuthService {
 		}
 
 		if (
-			!user.verificationCode ||
-			!user.verificationCodeExpires ||
-			user.verificationCode !== code
+			!user.emailVerificationCode ||
+			!user.emailVerificationCodeExpires ||
+			user.emailVerificationCode !== code
 		) {
 			throw new BadRequestException('Invalid verification code.');
 		}
 
-		if (user.verificationCodeExpires < new Date()) {
+		if (user.emailVerificationCodeExpires < new Date()) {
 			throw new BadRequestException('Verification code has expired.');
 		}
 
 		user.emailVerified = true;
-		user.verificationCode = undefined;
-		user.verificationCodeExpires = undefined;
+		user.emailVerificationCode = undefined;
+		user.emailVerificationCodeExpires = undefined;
 
 		await user.save();
 	}
@@ -397,21 +400,21 @@ export class AuthService {
 			throw new BadRequestException('Email is already verified.');
 		}
 
-		const verificationCode = Math.floor(
+		const emailVerificationCode = Math.floor(
 			100000 + Math.random() * 900000
 		).toString();
-		const verificationCodeExpires = new Date(
+		const emailVerificationCodeExpires = new Date(
 			Date.now() + 24 * 60 * 60 * 1000
 		);
 
-		user.verificationCode = verificationCode;
-		user.verificationCodeExpires = verificationCodeExpires;
+		user.emailVerificationCode = emailVerificationCode;
+		user.emailVerificationCodeExpires = emailVerificationCodeExpires;
 
 		await user.save();
 
 		await this.mailService.sendVerificationEmail(
 			email,
-			verificationCode
+			emailVerificationCode
 		);
 	}
 }

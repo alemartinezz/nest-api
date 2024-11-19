@@ -1,4 +1,4 @@
-// src/dto/user/get-user.dto.ts
+// src/users/dtos/get-user.dto.ts
 
 import { IsEmail, IsOptional, IsString } from 'class-validator';
 

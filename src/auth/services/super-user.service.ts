@@ -1,12 +1,15 @@
-// src/auth/super-user.service.ts
+// src/super-user.service.ts
 
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from 'argon2';
 import { Model } from 'mongoose';
-import { User, UserDocument } from '../database/schemas/user.schema';
-import { UserRole } from '../dto/user/roles.enum';
+import {
+	User,
+	UserDocument
+} from 'src/database/mongoose/schemas/user.schema';
+import { UserRole } from 'src/users/dtos/roles.enum';
 
 @Injectable()
 export class SuperUserService implements OnModuleInit {

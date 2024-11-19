@@ -1,146 +1,75 @@
 // src/auth/auth.controller.ts
 
-import {
-	Body,
-	Controller,
-	Get,
-	HttpCode,
-	Post,
-	Put,
-	Query,
-	Req
-} from '@nestjs/common';
-import { Request } from 'express';
-import { sanitizeObject } from 'src/common/utils/object.util';
-import { UserDocument } from 'src/database/schemas/user.schema';
-import { ChangePasswordDto } from 'src/dto/user/change-password.dto';
-import { GetUserDto } from 'src/dto/user/get-user.dto';
-import { ResendVerificationDto } from 'src/dto/user/resend-verification.dto';
-import { signUpDto } from 'src/dto/user/sign-up.dto';
-import { UpdateUserDto } from 'src/dto/user/update-user.dto';
-import { VerifyEmailDto } from 'src/dto/user/verify-email.dto';
+import { Body, Controller, Post, Put } from '@nestjs/common';
+import { sanitizeObject } from 'src/common/utils/response.utils';
+import { UserRole } from 'src/users/dtos/roles.enum';
+import { UserDocument } from '../database/mongoose/schemas/user.schema';
 import { AuthService } from './auth.service';
-import { Guest, User as UserRoleDecorator } from './roles.decorator'; // Import role decorators
+import { CurrentUser } from './decorators/current-user.decorator';
+import { Public } from './decorators/public.decorator';
+import { Roles } from './decorators/roles.decorator';
+import { ChangePasswordDto } from './dtos/change-password.dto';
+import { ResendVerificationDto } from './dtos/resend-verification.dto';
+import { SignInDto } from './dtos/sign-in.dto';
+import { SignUpDto } from './dtos/sign-up.dto';
+import { VerifyEmailDto } from './dtos/verify-email.dto';
 
 @Controller('auth')
 export class AuthController {
 	constructor(private readonly authService: AuthService) {}
 
-	@Guest()
-	@Get('user')
-	async getUser(
-		@Query() params: GetUserDto
-	): Promise<{ user: Partial<UserDocument> }> {
-		const user = await this.authService.getUser(params);
-
-		const sanitizedUser = sanitizeObject(user.toObject());
-
-		return { user: sanitizedUser };
-	}
-
-	@Guest()
+	@Public()
 	@Post('signup')
 	async signUp(
-		@Body() signUpDto: signUpDto
+		@Body() signUpDto: SignUpDto
 	): Promise<{ user: Partial<UserDocument> }> {
 		const { email, password } = signUpDto;
-
 		const user = await this.authService.signUp(email, password);
-
 		const sanitizedUser = sanitizeObject(user.toObject());
-
 		return { user: sanitizedUser };
 	}
 
-	@Guest()
+	@Public()
 	@Post('login')
-	@HttpCode(200)
 	async login(
-		@Body() loginDto: signUpDto
+		@Body() signInDto: SignInDto
 	): Promise<{ user: Partial<UserDocument> }> {
-		const { email, password } = loginDto;
-
+		const { email, password } = signInDto;
 		const user = await this.authService.login(email, password);
-
 		const sanitizedUser = sanitizeObject(user.toObject());
-
 		return { user: sanitizedUser };
 	}
 
-	@UserRoleDecorator()
-	@Put('user')
-	async updateUser(
-		@Req() request: Request,
-		@Query() params: GetUserDto,
-		@Body() updates: UpdateUserDto
-	): Promise<{ message: string; user?: Partial<UserDocument> }> {
-		const authenticatedUser = request.user;
-
-		const { user, updated } = await this.authService.updateUser(
-			authenticatedUser,
-			params,
-			updates
-		);
-
-		const sanitizedUser = sanitizeObject(user.toObject());
-
-		const message = updated
-			? 'User updated successfully.'
-			: 'No changes detected.';
-
-		return { message, user: sanitizedUser };
-	}
-
-	@UserRoleDecorator()
+	@Roles(UserRole.ADMIN, UserRole.BASIC)
 	@Put('reset-password')
 	async resetPassword(
-		@Req() request: Request,
+		@CurrentUser() authenticatedUser: UserDocument,
 		@Body() changePasswordDto: ChangePasswordDto
 	): Promise<{ message: string }> {
-		const authenticatedUser = request.user;
-
 		await this.authService.resetPassword(
 			authenticatedUser,
 			changePasswordDto
 		);
-
 		return { message: 'Password updated successfully.' };
 	}
 
-	@UserRoleDecorator()
-	@Get('regenerate-token')
-	async generateToken(
-		@Req() request: Request
-	): Promise<{ token: string }> {
-		const authenticatedUser = request.user;
-
-		const token: string =
-			await this.authService.regenerateToken(authenticatedUser);
-
-		return { token };
-	}
-
-	@Guest()
+	@Public()
 	@Post('verify-email')
 	async verifyEmail(
 		@Body() verifyEmailDto: VerifyEmailDto
 	): Promise<{ message: string }> {
 		const { email, code } = verifyEmailDto;
-
 		await this.authService.verifyEmail(email, code);
-
 		return { message: 'Email verified successfully.' };
 	}
 
-	@Guest()
+	@Roles(UserRole.ADMIN, UserRole.BASIC)
 	@Post('resend-verification-code')
 	async resendVerificationCode(
 		@Body() resendVerificationDto: ResendVerificationDto
 	): Promise<{ message: string }> {
 		const { email } = resendVerificationDto;
-
 		await this.authService.resendVerificationCode(email);
-
 		return { message: 'Verification code resent successfully.' };
 	}
 }

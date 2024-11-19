@@ -8,27 +8,33 @@ import {
 	Injectable,
 	Logger
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { format } from 'date-fns';
 import { Request } from 'express';
-import { UserRole } from 'src/dto/user/roles.enum';
+import { UserDocument } from 'src/database/mongoose/schemas/user.schema';
+import { UserRole } from 'src/users/dtos/roles.enum';
 import { RedisService } from '../../database/redis/redis.service';
-import { UserDocument } from '../../database/schemas/user.schema';
 import { AuthService } from '../auth.service';
-import { IS_PUBLIC_KEY } from '../public.decorator';
-import { RateLimitConfigService } from './rate-limit-config.service';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { RateLimitConfigService } from '../services/rate-limit-config.service';
 
 @Injectable()
 export class TokenRateLimitGuard implements CanActivate {
 	private readonly logger = new Logger(TokenRateLimitGuard.name);
-	private readonly TOKEN_REGEX = /^[a-f0-9]{32}$/i; // 32-character hexadecimal
+	private readonly TOKEN_REGEX: RegExp;
 
 	constructor(
+		private readonly configService: ConfigService,
 		private readonly authService: AuthService,
 		private readonly redisService: RedisService,
 		private readonly reflector: Reflector,
 		private readonly rateLimitConfigService: RateLimitConfigService
-	) {}
+	) {
+		this.TOKEN_REGEX = new RegExp(
+			this.configService.get<string>('TOKEN_REGEX')
+		);
+	}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		try {
@@ -43,7 +49,6 @@ export class TokenRateLimitGuard implements CanActivate {
 
 			if (!authHeader) {
 				if (isPublic) {
-					request.user = { role: UserRole.GUEST }; // Assign Guest role to unauthenticated users
 					return true;
 				}
 				this.logger.warn('Authorization header missing');
@@ -74,8 +79,10 @@ export class TokenRateLimitGuard implements CanActivate {
 				);
 			}
 
+			request.user = user; // Set the user in the request object
+
 			// Skip token expiration and usage checks for SUPER role
-			if (user.role !== 'super') {
+			if (user.role !== UserRole.SUPER) {
 				// Check token expiration
 				if (
 					user.tokenExpiration &&
@@ -96,7 +103,7 @@ export class TokenRateLimitGuard implements CanActivate {
 						`Token ${user.token} has reached its usage limit for user ${user.email}`
 					);
 					throw new HttpException(
-						'Token usage limit exceeded.',
+						'Token usage limit exceeded. Consider upgrading your plan. More info at: https://google.com/plans',
 						HttpStatus.TOO_MANY_REQUESTS
 					);
 				}
@@ -104,8 +111,6 @@ export class TokenRateLimitGuard implements CanActivate {
 				// Increment usage counters
 				await this.incrementTokenUsage(user);
 			}
-
-			request.user = user; // Set the user in the request object
 
 			const { role } = user;
 
@@ -118,7 +123,7 @@ export class TokenRateLimitGuard implements CanActivate {
 			const key = `token-rate-limit:${user.token}`;
 
 			// Skip rate limiting for SUPER role
-			if (role !== 'super') {
+			if (role !== UserRole.SUPER) {
 				const currentCount = await this.redisService.redis.incr(key);
 
 				if (currentCount === 1) {

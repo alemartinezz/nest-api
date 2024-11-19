@@ -43,6 +43,10 @@ export class EnvConfig {
 	@IsNotEmpty()
 	IV_HEX: string;
 
+	@IsString()
+	@IsNotEmpty()
+	TOKEN_REGEX: string;
+
 	// ---------------------- //
 	// ----- Throttling ----- //
 	// ---------------------- //

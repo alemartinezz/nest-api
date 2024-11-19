@@ -1,6 +1,13 @@
 // src/common/filters/http-exception.filter.ts
 
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import {
+	ArgumentsHost,
+	Catch,
+	ExceptionFilter,
+	HttpException,
+	HttpStatus,
+	Logger
+} from '@nestjs/common';
 import { ResponseFormat } from '../interceptors/transform.interceptor';
 
 @Catch()
@@ -24,8 +31,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
 				messages = [exceptionResponse];
 			} else if (typeof exceptionResponse === 'object') {
 				const res: any = exceptionResponse;
-				messages = Array.isArray(res.message) ? res.message : [res.message];
-				code = res.code || exception.name || HttpStatus[statusCode] || 'HttpException';
+				messages = Array.isArray(res.message)
+					? res.message
+					: [res.message];
+				code =
+					res.code ||
+					exception.name ||
+					HttpStatus[statusCode] ||
+					'HttpException';
 			}
 		} else {
 			// Log unexpected errors

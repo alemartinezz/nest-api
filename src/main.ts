@@ -19,11 +19,11 @@ async function bootstrap() {
 	// Enable global ValidationPipe with transformation
 	app.useGlobalPipes(
 		new ValidationPipe({
-			whitelist: true,
-			transform: true, // Enables transformation
-			forbidNonWhitelisted: true, // Optionally forbid non-whitelisted properties
+			whitelist: true, // Strip properties that don't have decorators
+			forbidNonWhitelisted: true, // Throw errors on non-whitelisted properties
+			transform: true, // Automatically transform payloads to DTO instances
 			transformOptions: {
-				enableImplicitConversion: true // Enables implicit type conversion
+				enableImplicitConversion: true // Allow implicit type conversion
 			}
 		})
 	);
@@ -34,7 +34,9 @@ async function bootstrap() {
 	const apiHost = configService.get<string>('API_HOST');
 
 	await app.listen(apiPort, apiHost, () => {
-		console.log(`🚀 Server running at ${protocol}://${apiHost}:${apiPort}`);
+		console.log(
+			`🚀 Server running at ${protocol}://${apiHost}:${apiPort}`
+		);
 	});
 }
 

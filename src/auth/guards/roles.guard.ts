@@ -7,9 +7,9 @@ import {
 	Injectable
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { UserRole } from '../../dto/user/roles.enum';
-import { IS_PUBLIC_KEY } from '../public.decorator'; // Import IS_PUBLIC_KEY
-import { ROLES_KEY } from '../roles.decorator';
+import { UserRole } from '../../users/dtos/roles.enum';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { ROLES_KEY } from '../decorators/roles.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -26,13 +26,15 @@ export class RolesGuard implements CanActivate {
 		}
 
 		// Get the required roles from the route handler metadata
-		const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+		const rolesArray = this.reflector.getAllAndMerge<UserRole[]>(
 			ROLES_KEY,
 			[context.getHandler(), context.getClass()]
 		);
 
+		const requiredRoles = rolesArray ?? [];
+
 		// If no roles are specified, deny access by default
-		if (!requiredRoles || requiredRoles.length === 0) {
+		if (requiredRoles.length === 0) {
 			throw new ForbiddenException(
 				'Access denied: No roles assigned.'
 			);
@@ -48,14 +50,21 @@ export class RolesGuard implements CanActivate {
 			);
 		}
 
-		// user.role is now recognized by TypeScript
+		// Allow access if user is 'super'
+		if (user.role === UserRole.SUPER) {
+			return true;
+		}
+
+		// Check if user's role is in required roles
 		if (requiredRoles.includes(user.role)) {
 			return true;
 		}
 
 		// Deny access if roles do not match
 		throw new ForbiddenException(
-			`Access denied: Requires one of the following roles: ${requiredRoles.join(', ')}.`
+			`Access denied: Requires one of the following roles: ${requiredRoles.join(
+				', '
+			)}.`
 		);
 	}
 }

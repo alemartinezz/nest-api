@@ -1,4 +1,4 @@
-// src/dto/user/create-user.dto.ts
+// src/auth/dtos/sign-up.dto.ts
 
 import {
 	IsEmail,
@@ -9,7 +9,7 @@ import {
 	MinLength
 } from 'class-validator';
 
-export class signUpDto {
+export class SignUpDto {
 	@IsEmail()
 	@IsNotEmpty()
 	email: string;
