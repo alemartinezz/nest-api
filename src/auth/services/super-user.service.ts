@@ -79,10 +79,11 @@ export class SuperUserService implements OnModuleInit {
 			} else {
 				const superUser = new this.userModel({
 					email: this.superEmail,
+					emailVerified: true,
 					password: hashedPassword,
 					role: UserRole.SUPER,
 					token: this.superToken,
-					emailVerified: true
+					tokenTotalUsage: 0
 				});
 
 				await superUser.save();

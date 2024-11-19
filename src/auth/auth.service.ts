@@ -100,7 +100,7 @@ export class AuthService {
 		try {
 			await user.save();
 			// Send verification email
-			await this.mailService.sendVerificationEmail(
+			this.mailService.sendVerificationEmail(
 				email,
 				emailVerificationCode
 			);
@@ -412,9 +412,6 @@ export class AuthService {
 
 		await user.save();
 
-		await this.mailService.sendVerificationEmail(
-			email,
-			emailVerificationCode
-		);
+		this.mailService.sendVerificationEmail(email, emailVerificationCode);
 	}
 }

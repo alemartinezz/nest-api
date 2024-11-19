@@ -14,137 +14,140 @@ import {
 } from 'class-validator';
 
 export class EnvConfig {
-	@IsString()
-	@IsNotEmpty()
-	@IsIn(['development', 'staging', 'production'])
+	@IsString({ message: 'NODE_ENV must be a string.' })
+	@IsNotEmpty({ message: 'NODE_ENV is required.' })
+	@IsIn(['development', 'staging', 'production'], {
+		message:
+			'NODE_ENV must be one of the following: development, staging, production.'
+	})
 	NODE_ENV: string;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'API_HOST must be a string.' })
+	@IsNotEmpty({ message: 'API_HOST is required.' })
 	API_HOST: string;
 
-	@IsNumber()
-	@IsNotEmpty()
+	@IsNumber({}, { message: 'API_PORT must be a number.' })
+	@IsNotEmpty({ message: 'API_PORT is required.' })
 	API_PORT: number;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'PROTOCOL must be a string.' })
+	@IsNotEmpty({ message: 'PROTOCOL is required.' })
 	PROTOCOL: string;
 
 	// ---------------------- //
 	// - Encryption Config -- //
 	// ---------------------- //
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'ENCRYPTION_KEY must be a string.' })
+	@IsNotEmpty({ message: 'ENCRYPTION_KEY is required.' })
 	ENCRYPTION_KEY: string;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'IV_HEX must be a string.' })
+	@IsNotEmpty({ message: 'IV_HEX is required.' })
 	IV_HEX: string;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'TOKEN_REGEX must be a string.' })
+	@IsNotEmpty({ message: 'TOKEN_REGEX is required.' })
 	TOKEN_REGEX: string;
 
 	// ---------------------- //
 	// ----- Throttling ----- //
 	// ---------------------- //
 
-	@IsNumber()
-	@IsNotEmpty()
+	@IsNumber({}, { message: 'IP_RATE_LIMIT_MAX must be a number.' })
+	@IsNotEmpty({ message: 'IP_RATE_LIMIT_MAX is required.' })
 	IP_RATE_LIMIT_MAX: number;
 
-	@IsNumber()
-	@IsNotEmpty()
+	@IsNumber({}, { message: 'IP_RATE_LIMIT_WINDOW must be a number.' })
+	@IsNotEmpty({ message: 'IP_RATE_LIMIT_WINDOW is required.' })
 	IP_RATE_LIMIT_WINDOW: number;
 
 	// ---------------------- //
 	// ------- Redis -------- //
 	// ---------------------- //
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'REDIS_HOST must be a string.' })
+	@IsNotEmpty({ message: 'REDIS_HOST is required.' })
 	REDIS_HOST: string;
 
-	@IsNumber()
-	@IsNotEmpty()
+	@IsNumber({}, { message: 'REDIS_PORT must be a number.' })
+	@IsNotEmpty({ message: 'REDIS_PORT is required.' })
 	REDIS_PORT: number;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'REDIS_PASSWORD must be a string.' })
+	@IsNotEmpty({ message: 'REDIS_PASSWORD is required.' })
 	REDIS_PASSWORD: string;
 
 	// ---------------------- //
 	// ----- Mongo Config --- //
 	// ---------------------- //
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'MONGO_USERNAME must be a string.' })
+	@IsNotEmpty({ message: 'MONGO_USERNAME is required.' })
 	MONGO_USERNAME: string;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'MONGO_PASSWORD must be a string.' })
+	@IsNotEmpty({ message: 'MONGO_PASSWORD is required.' })
 	MONGO_PASSWORD: string;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'MONGO_HOST must be a string.' })
+	@IsNotEmpty({ message: 'MONGO_HOST is required.' })
 	MONGO_HOST: string;
 
-	@IsNumber()
-	@IsNotEmpty()
+	@IsNumber({}, { message: 'MONGO_PORT must be a number.' })
+	@IsNotEmpty({ message: 'MONGO_PORT is required.' })
 	MONGO_PORT: number;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'MONGO_DATABASE must be a string.' })
+	@IsNotEmpty({ message: 'MONGO_DATABASE is required.' })
 	MONGO_DATABASE: string;
 
 	@IsOptional()
-	@IsString()
+	@IsString({ message: 'MONGO_URI must be a string if provided.' })
 	MONGO_URI?: string;
 
 	// ---------------------- //
 	// ----- Email Config --- //
 	// ---------------------- //
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'EMAIL_HOST must be a string.' })
+	@IsNotEmpty({ message: 'EMAIL_HOST is required.' })
 	EMAIL_HOST: string;
 
-	@IsNumber()
-	@IsNotEmpty()
+	@IsNumber({}, { message: 'EMAIL_PORT must be a number.' })
+	@IsNotEmpty({ message: 'EMAIL_PORT is required.' })
 	EMAIL_PORT: number;
 
-	@IsBoolean()
-	@IsNotEmpty()
+	@IsBoolean({ message: 'EMAIL_SECURE must be a boolean.' })
+	@IsNotEmpty({ message: 'EMAIL_SECURE is required.' })
 	EMAIL_SECURE: boolean;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'EMAIL_USER must be a string.' })
+	@IsNotEmpty({ message: 'EMAIL_USER is required.' })
 	EMAIL_USER: string;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'EMAIL_PASSWORD must be a string.' })
+	@IsNotEmpty({ message: 'EMAIL_PASSWORD is required.' })
 	EMAIL_PASSWORD: string;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'EMAIL_FROM must be a string.' })
+	@IsNotEmpty({ message: 'EMAIL_FROM is required.' })
 	EMAIL_FROM: string;
 
 	// ---------------------- //
 	// -------- Super ------- //
 	// ---------------------- //
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'SUPER_TOKEN must be a string.' })
+	@IsNotEmpty({ message: 'SUPER_TOKEN is required.' })
 	SUPER_TOKEN: string;
 
-	@IsEmail()
-	@IsNotEmpty()
+	@IsEmail({}, { message: 'SUPER_EMAIL must be a valid email address.' })
+	@IsNotEmpty({ message: 'SUPER_EMAIL is required.' })
 	SUPER_EMAIL: string;
 
-	@IsString()
-	@IsNotEmpty()
+	@IsString({ message: 'SUPER_PASSWORD must be a string.' })
+	@IsNotEmpty({ message: 'SUPER_PASSWORD is required.' })
 	SUPER_PASSWORD: string;
 }
 

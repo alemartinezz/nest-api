@@ -50,10 +50,12 @@ export class UsersService {
 
 			if (key === 'email') {
 				const normalizedEmail = value.toLowerCase();
+
 				if (user.email.toLowerCase() !== normalizedEmail) {
 					const existingUser = await this.userModel
 						.findOne({ email: normalizedEmail })
 						.exec();
+
 					if (
 						existingUser &&
 						existingUser._id.toString() !== user._id.toString()
@@ -62,6 +64,7 @@ export class UsersService {
 							`Email ${value} is already in use.`
 						);
 					}
+
 					fieldsToUpdate[key] = normalizedEmail;
 				}
 			} else {

@@ -1,12 +1,6 @@
 // src/users/users.controller.ts
 
-import {
-	Body,
-	Controller,
-	Get,
-	Put,
-	UnauthorizedException
-} from '@nestjs/common';
+import { Body, Controller, Get, Put } from '@nestjs/common';
 import { sanitizeObject } from 'src/common/utils/response.utils';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -24,10 +18,6 @@ export class UsersController {
 	async getProfile(
 		@CurrentUser() authenticatedUser: UserDocument
 	): Promise<{ user: Partial<UserDocument> }> {
-		if (!authenticatedUser) {
-			throw new UnauthorizedException('User not authenticated.');
-		}
-
 		const user = await this.usersService.getUserById(
 			authenticatedUser.id
 		);
@@ -45,10 +35,6 @@ export class UsersController {
 		@CurrentUser() authenticatedUser: UserDocument,
 		@Body() updates: UpdateUserDto
 	): Promise<{ message: string; user?: Partial<UserDocument> }> {
-		if (!authenticatedUser) {
-			throw new UnauthorizedException('User not authenticated.');
-		}
-
 		const { user, updated } = await this.usersService.updateUser(
 			authenticatedUser,
 			updates
