@@ -1,7 +1,6 @@
 // src/auth/auth.controller.ts
 
 import { Body, Controller, Post, Put } from '@nestjs/common';
-import { sanitizeObject } from 'src/common/utils/response.utils';
 import { UserRole } from 'src/users/dtos/roles.enum';
 import { UserDocument } from '../database/mongoose/schemas/user.schema';
 import { AuthService } from './auth.service';
@@ -25,8 +24,7 @@ export class AuthController {
 	): Promise<{ user: Partial<UserDocument> }> {
 		const { email, password } = signUpDto;
 		const user = await this.authService.signUp(email, password);
-		const sanitizedUser = sanitizeObject(user.toObject());
-		return { user: sanitizedUser };
+		return { user };
 	}
 
 	@Public()
@@ -36,8 +34,7 @@ export class AuthController {
 	): Promise<{ user: Partial<UserDocument> }> {
 		const { email, password } = signInDto;
 		const user = await this.authService.login(email, password);
-		const sanitizedUser = sanitizeObject(user.toObject());
-		return { user: sanitizedUser };
+		return { user };
 	}
 
 	@Roles(UserRole.ADMIN, UserRole.BASIC)

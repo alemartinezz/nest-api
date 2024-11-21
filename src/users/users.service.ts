@@ -34,7 +34,7 @@ export class UsersService {
 	async updateUser(
 		authenticatedUser: UserDocument,
 		updates: UpdateUserDto
-	): Promise<{ user: UserDocument; updated: boolean }> {
+	): Promise<{ user: UserDocument }> {
 		const user = await this.userModel.findById(authenticatedUser._id);
 
 		if (!user) {
@@ -75,7 +75,7 @@ export class UsersService {
 		}
 
 		if (Object.keys(fieldsToUpdate).length === 0) {
-			return { user, updated: false };
+			return { user };
 		}
 
 		try {
@@ -85,7 +85,7 @@ export class UsersService {
 				{ new: true }
 			);
 
-			return { user: updatedUser, updated: true };
+			return { user: updatedUser };
 		} catch (error) {
 			this.logger.error(
 				`Error updating user with id ${user._id}.`,
