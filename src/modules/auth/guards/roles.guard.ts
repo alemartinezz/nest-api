@@ -1,4 +1,4 @@
-// src/modules/auth/guards/roles.guard.ts
+// /src/modules/auth/guards/roles.guard.ts
 
 import {
 	CanActivate,
@@ -10,7 +10,6 @@ import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from 'src/modules/auth/decorators/public.decorator';
 import { ROLES_KEY } from 'src/modules/auth/decorators/roles.decorator';
 import { UserRole } from '../dtos/roles.enum';
-
 @Injectable()
 export class RolesGuard implements CanActivate {
 	constructor(private reflector: Reflector) {}

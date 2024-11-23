@@ -1,4 +1,4 @@
-// src/modules/api/http-exception.filter.ts
+// /src/modules/api/http-exception.filter.ts
 
 import {
 	ArgumentsHost,
@@ -9,11 +9,9 @@ import {
 	Logger
 } from '@nestjs/common';
 import { ResponseFormat } from './response.format';
-
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
 	private readonly logger = new Logger(AllExceptionsFilter.name);
-
 	catch(exception: unknown, host: ArgumentsHost) {
 		const ctx = host.switchToHttp();
 		const response = ctx.getResponse();

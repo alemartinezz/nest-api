@@ -1,4 +1,4 @@
-// src/features/users/users.service.ts
+// /src/features/users/users.service.ts
 
 import {
 	BadRequestException,
@@ -17,30 +17,24 @@ import {
 import { MyNotificationsService } from '../notifications/notifications.service';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { UserResponseDto } from './dtos/user-response.dto';
-
 import { UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { GetUserDto } from 'src/features/users/dtos/get-user.dto';
 import { UserRole } from 'src/modules/auth/dtos/roles.enum';
 import { ChangePasswordDto } from './dtos/change-password.dto';
-
 @Injectable()
 export class MyUsersService {
 	readonly logger = new Logger(MyUsersService.name);
-
 	constructor(
 		@InjectModel(User.name) private userModel: Model<UserDocument>,
 		private readonly myNotificationsService: MyNotificationsService,
 		private readonly rateLimitConfigService: RateLimitConfigService
 	) {}
-
 	async signUp(email: string, password: string): Promise<UserResponseDto> {
 		this.logger.debug(`Attempting to create user with email: ${email}`);
-
 		// 1. Normalize input
 		email = email.toLowerCase();
-
 		// 2. Check if user already exists
 		const existingUser = await this.userModel.findOne({ email }).exec();
 		if (existingUser) {
@@ -49,7 +43,6 @@ export class MyUsersService {
 				`Email ${email} is already in use.`
 			);
 		}
-
 		// 3. Hash password using Argon2
 		let hashedPassword: string;
 		try {
@@ -63,27 +56,21 @@ export class MyUsersService {
 			this.logger.error('Error hashing password', error);
 			throw new BadRequestException('Failed to hash password.');
 		}
-
 		// Generate verification code
 		const emailVerificationCode = Math.floor(
 			100000 + Math.random() * 900000
 		).toString(); // 6-digit code
-
 		const emailVerificationCodeExpires = new Date(
 			Date.now() + 24 * 60 * 60 * 1000
 		); // Expires in 24 hours
-
 		// Get rate limits based on user role
 		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(
 			UserRole.BASIC
 		);
-
 		const { tokenCurrentLimit, tokenExpirationDays } = rateLimitConfig;
-
 		const tokenExpiration = new Date(
 			Date.now() + tokenExpirationDays * 24 * 60 * 60 * 1000
 		);
-
 		// Create user with token limits
 		const user = new this.userModel({
 			email,
@@ -98,7 +85,6 @@ export class MyUsersService {
 			tokenCurrentLimit,
 			tokenExpiration
 		});
-
 		try {
 			await user.save();
 			// Send verification email via NotificationsService
@@ -123,27 +109,23 @@ export class MyUsersService {
 		});
 		return userDto;
 	}
-
 	// Updated login method
 	async login(
 		email: string,
 		password: string
 	): Promise<{ user: UserResponseDto; messages: string }> {
 		email = email.toLowerCase();
-
 		// Include 'password' in the selection
 		const user = await this.userModel
 			.findOne({ email })
 			.select('+password')
 			.lean()
 			.exec();
-
 		if (!user) {
 			throw new NotFoundException(
 				`User with email: ${email} not found.`
 			);
 		}
-
 		// Verify the incoming password with the stored hashed password
 		let isPasswordValid: boolean;
 		try {
@@ -152,19 +134,15 @@ export class MyUsersService {
 			this.logger.error('Error verifying password', error);
 			throw new UnauthorizedException('Invalid password.');
 		}
-
 		if (!isPasswordValid) {
 			throw new UnauthorizedException('Invalid password.');
 		}
-
 		// Map the Mongoose document to the DTO
 		const userDto = plainToClass(UserResponseDto, user, {
 			excludeExtraneousValues: true
 		});
-
 		return { user: userDto, messages: 'Login successful' };
 	}
-
 	async getUser(params: GetUserDto): Promise<UserDocument> {
 		if (!params.id && !params.email && !params.token) {
 			throw new BadRequestException(
@@ -189,10 +167,8 @@ export class MyUsersService {
 			await user.save();
 			this.logger.log(`Assigned default role to user ${user.email}`);
 		}
-
 		return user;
 	}
-
 	async resetPassword(
 		authenticatedUser: UserDocument,
 		changePasswordDto: ChangePasswordDto
@@ -240,18 +216,14 @@ export class MyUsersService {
 		}
 		return { messages: 'Password updated successfully.' };
 	}
-
 	// use updateUser method to update user's token
 	async regenerateToken(authenticatedUser: UserDocument): Promise<string> {
 		const token = crypto.randomBytes(16).toString('hex');
-
 		// Get rate limits based on user role
 		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(
 			authenticatedUser.role
 		);
-
 		const { tokenCurrentLimit, tokenExpirationDays } = rateLimitConfig;
-
 		// Set token expiration date
 		const tokenExpiration = new Date(
 			Date.now() + tokenExpirationDays * 24 * 60 * 60 * 1000
@@ -270,14 +242,12 @@ export class MyUsersService {
 				`Error regenerating token for user ${authenticatedUser.email}`,
 				error
 			);
-
 			throw new BadRequestException(
 				'Failed to regenerate token due to a database error.'
 			);
 		}
 		return token;
 	}
-
 	async verifyEmail(email: string, code: string): Promise<void> {
 		email = email.toLowerCase();
 		const user = await this.userModel.findOne({ email });
@@ -286,11 +256,9 @@ export class MyUsersService {
 				`User with email ${email} not found.`
 			);
 		}
-
 		if (user.emailVerified) {
 			throw new BadRequestException('Email is already verified.');
 		}
-
 		if (
 			!user.emailVerificationCode ||
 			!user.emailVerificationCodeExpires ||
@@ -298,41 +266,31 @@ export class MyUsersService {
 		) {
 			throw new BadRequestException('Invalid verification code.');
 		}
-
 		if (user.emailVerificationCodeExpires < new Date()) {
 			throw new BadRequestException('Verification code has expired.');
 		}
-
 		user.emailVerified = true;
 		user.emailVerificationCode = undefined;
 		user.emailVerificationCodeExpires = undefined;
-
 		await user.save();
 	}
-
 	async resendVerificationCode(email: string): Promise<void> {
 		email = email.toLowerCase();
-
 		const user = await this.userModel.findOne({ email });
-
 		if (!user) {
 			throw new NotFoundException(
 				`User with email ${email} not found.`
 			);
 		}
-
 		if (user.emailVerified) {
 			throw new BadRequestException('Email is already verified.');
 		}
-
 		const emailVerificationCode = Math.floor(
 			100000 + Math.random() * 900000
 		).toString();
-
 		const emailVerificationCodeExpires = new Date(
 			Date.now() + 24 * 60 * 60 * 1000
 		);
-
 		user.emailVerificationCode = emailVerificationCode;
 		user.emailVerificationCodeExpires = emailVerificationCodeExpires;
 		await user.save();
@@ -342,7 +300,6 @@ export class MyUsersService {
 			emailVerificationCode
 		);
 	}
-
 	async getUserById(userId: string): Promise<UserResponseDto> {
 		const user = await this.userModel.findById(userId);
 		if (!user) {
@@ -353,7 +310,6 @@ export class MyUsersService {
 		});
 		return userDto;
 	}
-
 	async updateUser(
 		authenticatedUser: UserDocument,
 		updates: UpdateUserDto

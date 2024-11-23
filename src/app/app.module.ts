@@ -1,8 +1,8 @@
-// src/app/app.module.ts
+// /src/app/app.module.ts
 
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { MyNotificationsModule } from 'src/features/notifications/notifications.module'; // Import NotificationsModule
+import { MyNotificationsModule } from 'src/features/notifications/notifications.module';
 import { MyUsersModule } from 'src/features/users/users.module';
 import { AuthModule } from 'src/modules/auth/auth.module';
 import { RolesGuard } from 'src/modules/auth/guards/roles.guard';
@@ -16,9 +16,9 @@ import { AppService } from './app.service';
 	imports: [
 		ConfigModule,
 		MongooseModulex,
-		AuthModule,
+		forwardRef(() => AuthModule), // Use forwardRef if AuthModule imports AppModule or causes circular dependencies
 		MyUsersModule,
-		MyNotificationsModule // Add NotificationsModule to imports
+		MyNotificationsModule
 	],
 	controllers: [AppController],
 	providers: [

@@ -1,4 +1,4 @@
-// src/modules/auth/dtos/change-password.dto.ts
+// /src/features/users/dtos/change-password.dto.ts
 
 import {
 	IsNotEmpty,
@@ -7,12 +7,10 @@ import {
 	MaxLength,
 	MinLength
 } from 'class-validator';
-
 export class ChangePasswordDto {
 	@IsString()
 	@IsNotEmpty()
 	currentPassword: string;
-
 	@IsString()
 	@IsNotEmpty()
 	@MinLength(8, {

@@ -1,14 +1,12 @@
-// src/modules/mails/mails.service.ts
+// /src/modules/mails/mails.service.ts
 
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-
 @Injectable()
 export class MailService {
 	private readonly logger = new Logger(MailService.name);
 	private transporter: nodemailer.Transporter;
-
 	constructor(private readonly configService: ConfigService) {
 		// Configure the transporter with Gmail SMTP settings
 		this.transporter = nodemailer.createTransport({
@@ -19,7 +17,6 @@ export class MailService {
 			}
 		});
 	}
-
 	/**
 	 * Sends an email with the provided HTML content.
 	 * @param email - The recipient's email address.

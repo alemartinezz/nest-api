@@ -1,4 +1,4 @@
-// src/modules/api/transform.interceptor.ts
+// /src/modules/api/transform.interceptor.ts
 
 import {
 	CallHandler,
@@ -10,7 +10,6 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ResponseFormat } from './response.format';
-
 @Injectable()
 export class TransformInterceptor<T>
 	implements NestInterceptor<T, ResponseFormat<T>>
@@ -25,20 +24,15 @@ export class TransformInterceptor<T>
 				const response = ctx.getResponse();
 				const statusCode: number = response.statusCode;
 				const metadata = { ...response.getHeaders() };
-
 				// Remove 'x-powered-by' header if present
 				if (metadata['x-powered-by']) {
 					delete metadata['x-powered-by'];
 				}
-
 				const statusText = HttpStatus[statusCode] || 'UnknownStatus';
-
 				// Extract messages from data
 				const messages = data.messages ?? null;
-
 				// Remove messages from data
 				const { messages: _, ...dataWithoutMessages } = data;
-
 				return {
 					status: statusText,
 					code: statusCode,

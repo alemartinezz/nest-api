@@ -1,4 +1,4 @@
-// src/modules/auth/services/super-user.service.ts
+// /src/modules/auth/services/super-user.service.ts
 
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,14 +10,12 @@ import {
 	User,
 	UserDocument
 } from 'src/modules/mongoose/schemas/user.schema';
-
 @Injectable()
 export class SuperUserService implements OnModuleInit {
 	private readonly logger = new Logger(SuperUserService.name);
 	private readonly superToken: string;
 	private readonly superEmail: string;
 	private readonly superPassword: string;
-
 	constructor(
 		private readonly configService: ConfigService,
 		@InjectModel(User.name) private userModel: Model<UserDocument>
@@ -27,11 +25,9 @@ export class SuperUserService implements OnModuleInit {
 		this.superPassword =
 			this.configService.get<string>('SUPER_PASSWORD');
 	}
-
 	async onModuleInit() {
 		await this.ensureSuperUser();
 	}
-
 	private async ensureSuperUser() {
 		try {
 			const existingUser = await this.userModel

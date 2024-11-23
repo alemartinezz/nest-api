@@ -1,4 +1,4 @@
-// src/modules/auth/dtos/sign-up.dto.ts
+// /src/features/users/dtos/sign-up.dto.ts
 
 import {
 	IsEmail,
@@ -8,12 +8,10 @@ import {
 	MaxLength,
 	MinLength
 } from 'class-validator';
-
 export class SignUpDto {
 	@IsEmail()
 	@IsNotEmpty()
 	email: string;
-
 	@IsString()
 	@IsNotEmpty()
 	@MinLength(8)

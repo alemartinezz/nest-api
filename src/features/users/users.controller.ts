@@ -1,4 +1,4 @@
-// src/features/users/users.controller.ts
+// /src/features/users/users.controller.ts
 
 import {
 	Body,
@@ -24,9 +24,8 @@ import { VerifyEmailDto } from './dtos/verify-email.dto';
 import { MyUsersService } from './users.service';
 
 @Controller('users')
-export class UsersController {
+export class MyUsersController {
 	constructor(private readonly usersService: MyUsersService) {}
-
 	@Public()
 	@Post('signup')
 	@HttpCode(HttpStatus.CREATED) // 201
@@ -34,12 +33,9 @@ export class UsersController {
 		@Body() signUpDto: SignUpDto
 	): Promise<{ user: UserResponseDto }> {
 		const { email, password } = signUpDto;
-
 		const userDto = await this.usersService.signUp(email, password);
-
 		return { user: userDto };
 	}
-
 	@Public()
 	@Post('login')
 	@HttpCode(HttpStatus.OK) // Explicitly set to 200
@@ -47,15 +43,12 @@ export class UsersController {
 		@Body() signInDto: SignInDto
 	): Promise<{ user: UserResponseDto; messages: string }> {
 		const { email, password } = signInDto;
-
 		const { user, messages } = await this.usersService.login(
 			email,
 			password
 		);
-
 		return { user, messages };
 	}
-
 	@Public()
 	@Post('verify-email')
 	@HttpCode(HttpStatus.OK) // 200
@@ -63,12 +56,9 @@ export class UsersController {
 		@Body() verifyEmailDto: VerifyEmailDto
 	): Promise<{ messages: string }> {
 		const { email, code } = verifyEmailDto;
-
 		await this.usersService.verifyEmail(email, code);
-
 		return { messages: 'Email verified successfully.' };
 	}
-
 	@Roles(UserRole.ADMIN, UserRole.BASIC)
 	@Put('reset-password')
 	@HttpCode(HttpStatus.OK) // 200
@@ -80,10 +70,8 @@ export class UsersController {
 			authenticatedUser,
 			changePasswordDto
 		);
-
 		return { messages: 'Password updated successfully.' };
 	}
-
 	@Roles(UserRole.ADMIN, UserRole.BASIC)
 	@Post('resend-verification-code')
 	@HttpCode(HttpStatus.OK) // 200
@@ -91,12 +79,9 @@ export class UsersController {
 		@Body() resendVerificationDto: ResendVerificationDto
 	): Promise<{ messages: string }> {
 		const { email } = resendVerificationDto;
-
 		await this.usersService.resendVerificationCode(email);
-
 		return { messages: 'Verification code resent successfully.' };
 	}
-
 	@Roles(UserRole.ADMIN, UserRole.BASIC)
 	@HttpCode(HttpStatus.OK)
 	@Get('me')
@@ -108,7 +93,6 @@ export class UsersController {
 		);
 		return { user: userDto };
 	}
-
 	@Roles(UserRole.ADMIN, UserRole.BASIC)
 	@HttpCode(HttpStatus.OK)
 	@Put('me')

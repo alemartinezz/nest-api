@@ -1,23 +1,23 @@
-// src/features/notifications/notifications.module.ts
+// /src/features/notifications/notifications.module.ts
 
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MailsModule } from 'src/modules/mails/mails.module'; // Import MailsModule
+import { SharedModule } from 'src/modules/shared.module';
 import {
 	User,
 	UserSchema
 } from '../../modules/mongoose/schemas/user.schema';
-import { UsersController } from '../users/users.controller';
-import { MyUsersService } from '../users/users.service';
 import { MyNotificationsService } from './notifications.service';
 
 @Module({
 	imports: [
 		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-		MailsModule // Add MailsModule to imports
+		MailsModule,
+		SharedModule
 	],
-	providers: [MyNotificationsService, MyUsersService],
-	controllers: [UsersController],
-	exports: [MyUsersService, MyNotificationsService]
+	providers: [MyNotificationsService],
+	controllers: [],
+	exports: [MyNotificationsService]
 })
 export class MyNotificationsModule {}

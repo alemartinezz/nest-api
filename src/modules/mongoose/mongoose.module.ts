@@ -1,8 +1,9 @@
-// src/modules/mongoose/mongoose.module.ts
+// /src/modules/mongoose/mongoose.module.ts
 
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+
 @Module({
 	imports: [
 		MongooseModule.forRootAsync({
@@ -12,6 +13,6 @@ import { MongooseModule } from '@nestjs/mongoose';
 			})
 		})
 	],
-	exports: [MongooseModule] // Exportamos MongooseModule para que otros módulos puedan usarlo
+	exports: [MongooseModule] // Export MongooseModule for use in other modules
 })
 export class MongooseModulex {}
