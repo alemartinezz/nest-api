@@ -6,10 +6,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { MyNotificationsModule } from 'src/features/notifications/notifications.module';
 import { MyUsersModule } from 'src/features/users/users.module';
 import { User, UserSchema } from '../mongoose/schemas/user.schema';
-import { AuthController } from './auth.controller';
 import { RolesGuard } from './guards/roles.guard';
 import { TokenRateLimitGuard } from './guards/token-rate-limit.guard';
-import { AuthService } from './services/auth.service';
 import { RateLimitConfigService } from './services/rate-limit-config.service';
 import { SuperUserService } from './services/super-user.service';
 
@@ -20,14 +18,12 @@ import { SuperUserService } from './services/super-user.service';
 		MyUsersModule,
 		MyNotificationsModule
 	],
-	controllers: [AuthController],
 	providers: [
-		AuthService,
 		RateLimitConfigService,
 		SuperUserService,
 		RolesGuard,
 		TokenRateLimitGuard
 	],
-	exports: [AuthService, RateLimitConfigService]
+	exports: [RateLimitConfigService]
 })
 export class AuthModule {}

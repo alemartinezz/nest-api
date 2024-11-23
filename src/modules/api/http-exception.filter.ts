@@ -8,7 +8,7 @@ import {
 	HttpStatus,
 	Logger
 } from '@nestjs/common';
-import { ResponseFormat } from './transform.interceptor';
+import { ResponseFormat } from './response.format';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -50,7 +50,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			status: statusText,
 			code: statusCode,
 			data: null,
-			errors: messages ?? null,
+			messages: messages ?? null,
 			metadata
 		};
 		response.status(statusCode).json(errorResponse);
