@@ -2,10 +2,13 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { MailService } from 'src/modules/mails/mails.service';
+
 @Injectable()
 export class MyNotificationsService {
 	private readonly logger = new Logger(MyNotificationsService.name);
+
 	constructor(private readonly mailService: MailService) {}
+
 	/**
 	 * Sends a verification email to the specified user with the provided code.
 	 * @param email - The recipient's email address.

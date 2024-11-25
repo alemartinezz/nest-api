@@ -2,40 +2,42 @@
 
 import {
 	BadRequestException,
+	ForbiddenException,
 	Injectable,
 	Logger,
-	NotFoundException
+	NotFoundException,
+	UnauthorizedException
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import * as argon2 from 'argon2';
 import { plainToClass } from 'class-transformer';
+import * as crypto from 'crypto';
 import { Model } from 'mongoose';
+import { GetUserDto } from 'src/features/users/dtos/get-user.dto';
+import { UserRole } from 'src/modules/auth/dtos/roles.enum';
 import { RateLimitConfigService } from 'src/modules/auth/services/rate-limit-config.service';
 import {
 	User,
 	UserDocument
 } from 'src/modules/mongoose/schemas/user.schema';
 import { MyNotificationsService } from '../notifications/notifications.service';
+import { ChangePasswordDto } from './dtos/change-password.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { UserResponseDto } from './dtos/user-response.dto';
-import { UnauthorizedException } from '@nestjs/common';
-import * as argon2 from 'argon2';
-import * as crypto from 'crypto';
-import { GetUserDto } from 'src/features/users/dtos/get-user.dto';
-import { UserRole } from 'src/modules/auth/dtos/roles.enum';
-import { ChangePasswordDto } from './dtos/change-password.dto';
+
 @Injectable()
 export class MyUsersService {
 	readonly logger = new Logger(MyUsersService.name);
+
 	constructor(
 		@InjectModel(User.name) private userModel: Model<UserDocument>,
 		private readonly myNotificationsService: MyNotificationsService,
 		private readonly rateLimitConfigService: RateLimitConfigService
 	) {}
+
 	async signUp(email: string, password: string): Promise<UserResponseDto> {
 		this.logger.debug(`Attempting to create user with email: ${email}`);
-		// 1. Normalize input
 		email = email.toLowerCase();
-		// 2. Check if user already exists
 		const existingUser = await this.userModel.findOne({ email }).exec();
 		if (existingUser) {
 			this.logger.warn(`Email ${email} is already in use.`);
@@ -43,12 +45,11 @@ export class MyUsersService {
 				`Email ${email} is already in use.`
 			);
 		}
-		// 3. Hash password using Argon2
 		let hashedPassword: string;
 		try {
 			hashedPassword = await argon2.hash(password, {
 				type: argon2.argon2id,
-				memoryCost: 2 ** 16, // 64 MB
+				memoryCost: 2 ** 16,
 				timeCost: 3,
 				parallelism: 1
 			});
@@ -56,14 +57,12 @@ export class MyUsersService {
 			this.logger.error('Error hashing password', error);
 			throw new BadRequestException('Failed to hash password.');
 		}
-		// Generate verification code
 		const emailVerificationCode = Math.floor(
 			100000 + Math.random() * 900000
-		).toString(); // 6-digit code
+		).toString();
 		const emailVerificationCodeExpires = new Date(
 			Date.now() + 24 * 60 * 60 * 1000
-		); // Expires in 24 hours
-		// Get rate limits based on user role
+		);
 		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(
 			UserRole.BASIC
 		);
@@ -71,7 +70,6 @@ export class MyUsersService {
 		const tokenExpiration = new Date(
 			Date.now() + tokenExpirationDays * 24 * 60 * 60 * 1000
 		);
-		// Create user with token limits
 		const user = new this.userModel({
 			email,
 			emailVerified: false,
@@ -87,7 +85,6 @@ export class MyUsersService {
 		});
 		try {
 			await user.save();
-			// Send verification email via NotificationsService
 			await this.myNotificationsService.sendVerificationEmail(
 				email,
 				emailVerificationCode
@@ -109,13 +106,12 @@ export class MyUsersService {
 		});
 		return userDto;
 	}
-	// Updated login method
+
 	async login(
 		email: string,
 		password: string
-	): Promise<{ user: UserResponseDto; messages: string }> {
+	): Promise<{ user: UserResponseDto }> {
 		email = email.toLowerCase();
-		// Include 'password' in the selection
 		const user = await this.userModel
 			.findOne({ email })
 			.select('+password')
@@ -126,7 +122,6 @@ export class MyUsersService {
 				`User with email: ${email} not found.`
 			);
 		}
-		// Verify the incoming password with the stored hashed password
 		let isPasswordValid: boolean;
 		try {
 			isPasswordValid = await argon2.verify(user.password, password);
@@ -137,12 +132,12 @@ export class MyUsersService {
 		if (!isPasswordValid) {
 			throw new UnauthorizedException('Invalid password.');
 		}
-		// Map the Mongoose document to the DTO
 		const userDto = plainToClass(UserResponseDto, user, {
 			excludeExtraneousValues: true
 		});
-		return { user: userDto, messages: 'Login successful' };
+		return { user: userDto };
 	}
+
 	async getUser(params: GetUserDto): Promise<UserDocument> {
 		if (!params.id && !params.email && !params.token) {
 			throw new BadRequestException(
@@ -169,12 +164,12 @@ export class MyUsersService {
 		}
 		return user;
 	}
+
 	async resetPassword(
 		authenticatedUser: UserDocument,
 		changePasswordDto: ChangePasswordDto
-	): Promise<{ messages: string }> {
+	): Promise<void> {
 		const { currentPassword, newPassword } = changePasswordDto;
-		// Verify current password
 		let isPasswordValid: boolean;
 		try {
 			isPasswordValid = await argon2.verify(
@@ -188,12 +183,11 @@ export class MyUsersService {
 		if (!isPasswordValid) {
 			throw new UnauthorizedException('Invalid current password.');
 		}
-		// Hash the new password
 		let hashedNewPassword: string;
 		try {
 			hashedNewPassword = await argon2.hash(newPassword, {
 				type: argon2.argon2id,
-				memoryCost: 2 ** 16, // 64 MB
+				memoryCost: 2 ** 16,
 				timeCost: 3,
 				parallelism: 1
 			});
@@ -201,7 +195,6 @@ export class MyUsersService {
 			this.logger.error('Error hashing new password', error);
 			throw new BadRequestException('Failed to hash new password.');
 		}
-		// Update the user's password
 		authenticatedUser.password = hashedNewPassword;
 		try {
 			await authenticatedUser.save();
@@ -214,17 +207,15 @@ export class MyUsersService {
 				'Failed to update password due to a database error.'
 			);
 		}
-		return { messages: 'Password updated successfully.' };
+		return;
 	}
-	// use updateUser method to update user's token
+
 	async regenerateToken(authenticatedUser: UserDocument): Promise<string> {
 		const token = crypto.randomBytes(16).toString('hex');
-		// Get rate limits based on user role
 		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(
 			authenticatedUser.role
 		);
 		const { tokenCurrentLimit, tokenExpirationDays } = rateLimitConfig;
-		// Set token expiration date
 		const tokenExpiration = new Date(
 			Date.now() + tokenExpirationDays * 24 * 60 * 60 * 1000
 		);
@@ -248,6 +239,7 @@ export class MyUsersService {
 		}
 		return token;
 	}
+
 	async verifyEmail(email: string, code: string): Promise<void> {
 		email = email.toLowerCase();
 		const user = await this.userModel.findOne({ email });
@@ -274,6 +266,7 @@ export class MyUsersService {
 		user.emailVerificationCodeExpires = undefined;
 		await user.save();
 	}
+
 	async resendVerificationCode(email: string): Promise<void> {
 		email = email.toLowerCase();
 		const user = await this.userModel.findOne({ email });
@@ -294,12 +287,12 @@ export class MyUsersService {
 		user.emailVerificationCode = emailVerificationCode;
 		user.emailVerificationCodeExpires = emailVerificationCodeExpires;
 		await user.save();
-		// Use NotificationsService to send the verification email
 		await this.myNotificationsService.sendVerificationEmail(
 			email,
 			emailVerificationCode
 		);
 	}
+
 	async getUserById(userId: string): Promise<UserResponseDto> {
 		const user = await this.userModel.findById(userId);
 		if (!user) {
@@ -310,14 +303,34 @@ export class MyUsersService {
 		});
 		return userDto;
 	}
+
 	async updateUser(
 		authenticatedUser: UserDocument,
+		userIdToUpdate: string,
 		updates: UpdateUserDto
 	): Promise<{ user: UserResponseDto }> {
-		const user = await this.userModel.findById(authenticatedUser._id);
+		const isSuperUser = authenticatedUser.role === UserRole.SUPER;
+
+		if (!isSuperUser) {
+			if (
+				userIdToUpdate &&
+				userIdToUpdate !== authenticatedUser._id.toString()
+			) {
+				throw new ForbiddenException(
+					'You can only update your own profile.'
+				);
+			}
+		}
+
+		const userId =
+			isSuperUser && userIdToUpdate
+				? userIdToUpdate
+				: authenticatedUser._id.toString();
+		const user = await this.userModel.findById(userId);
 		if (!user) {
 			throw new NotFoundException(`User not found.`);
 		}
+
 		const fieldsToUpdate: Partial<UserDocument> = {};
 		for (const [key, value] of Object.entries(updates)) {
 			if (!(key in user)) {

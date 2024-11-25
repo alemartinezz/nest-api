@@ -9,6 +9,7 @@ import {
 	UserSchema
 } from '../../modules/mongoose/schemas/user.schema';
 import { MyNotificationsService } from './notifications.service';
+
 @Module({
 	imports: [
 		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),

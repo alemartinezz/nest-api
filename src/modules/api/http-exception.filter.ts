@@ -9,6 +9,7 @@ import {
 	Logger
 } from '@nestjs/common';
 import { ResponseFormat } from './response.format';
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
 	private readonly logger = new Logger(AllExceptionsFilter.name);

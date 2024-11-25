@@ -11,7 +11,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { InjectModel } from '@nestjs/mongoose';
-import { format } from 'date-fns';
 import { Request, Response } from 'express';
 import { Model } from 'mongoose';
 import { IS_PUBLIC_KEY } from 'src/modules/auth/decorators/public.decorator';
@@ -62,6 +61,7 @@ export class TokenRateLimitGuard implements CanActivate {
 			const authHeader = this.getAuthHeader(request);
 			if (!authHeader) {
 				if (isPublic) {
+					// Do not set token rate limit headers for public endpoints
 					return true;
 				}
 				this.logger.warn('Authorization header missing');
@@ -136,21 +136,9 @@ export class TokenRateLimitGuard implements CanActivate {
 	): Promise<void> {
 		await this.incrementTokenTotalUsage(user);
 
-		// Set headers to indicate unlimited access
-		response.set('X-RateLimit-Limit', 'unlimited');
-		response.set('X-RateLimit-Remaining', 'unlimited');
-		response.set('X-RateLimit-Reset', 'never');
-		// Set custom headers for token usage
-		response.set('X-Token-Current-Limit', 'unlimited');
-		response.set(
-			'X-Token-Current-Usage',
-			user.tokenTotalUsage.toString()
-		);
-		response.set('X-Token-Current-Left', 'unlimited');
-		response.set(
-			'X-Token-Expiration',
-			user.tokenExpiration ? user.tokenExpiration.toISOString() : ''
-		);
+		response.set('X-Token-RateLimit-Limit', 'unlimited');
+		response.set('X-Token-RateLimit-Remaining', 'unlimited');
+		response.set('X-Token-RateLimit-Reset', 'never');
 	}
 
 	private async handleRegularUser(
@@ -161,7 +149,6 @@ export class TokenRateLimitGuard implements CanActivate {
 		const { maxRequests, windowSizeInSeconds, tokenCurrentLimit } =
 			rateLimitConfig;
 
-		// Check token expiration
 		if (this.isTokenExpired(user)) {
 			this.logger.warn(
 				`Token ${user.token} has expired for user ${user.email}`
@@ -172,7 +159,6 @@ export class TokenRateLimitGuard implements CanActivate {
 			);
 		}
 
-		// Enforce token usage limits
 		if (this.hasExceededUsageLimit(user, tokenCurrentLimit)) {
 			this.logger.warn(
 				`Token ${user.token} has reached its usage limit for user ${user.email}`
@@ -213,18 +199,15 @@ export class TokenRateLimitGuard implements CanActivate {
 		let rateLimitInfo = this.rateLimitMap.get(tokenRateLimitKey);
 
 		if (!rateLimitInfo || currentTime > rateLimitInfo.resetTime) {
-			// Initialize or reset the rate limit window
 			rateLimitInfo = {
 				count: 1,
 				resetTime: currentTime + windowSizeInSeconds
 			};
 			this.rateLimitMap.set(tokenRateLimitKey, rateLimitInfo);
 		} else {
-			// Increment the count within the current window
 			rateLimitInfo.count += 1;
 		}
 
-		// Check if current count exceeds maxRequests
 		if (rateLimitInfo.count > maxRequests) {
 			this.logger.warn(
 				`Token ${user.token} with role ${user.role} has exceeded the rate limit`
@@ -249,26 +232,7 @@ export class TokenRateLimitGuard implements CanActivate {
 		rateLimitInfo: RateLimitInfo,
 		response: Response
 	): void {
-		const { maxRequests, tokenCurrentLimit } = rateLimitConfig;
-		const remainingRequests =
-			maxRequests === Infinity
-				? 'unlimited'
-				: Math.max(maxRequests - rateLimitInfo.count, 0).toString();
-
-		response.set(
-			'X-RateLimit-Limit',
-			maxRequests === Infinity ? 'unlimited' : maxRequests.toString()
-		);
-		response.set('X-RateLimit-Remaining', remainingRequests);
-		response.set(
-			'X-RateLimit-Reset',
-			maxRequests === Infinity
-				? 'never'
-				: format(
-						new Date(rateLimitInfo.resetTime * 1000),
-						'EEE d MMM HH:mm:ss'
-					)
-		);
+		const { tokenCurrentLimit } = rateLimitConfig;
 
 		const tokenCurrentLeft =
 			tokenCurrentLimit === Infinity
@@ -279,19 +243,17 @@ export class TokenRateLimitGuard implements CanActivate {
 					).toString();
 
 		response.set(
-			'X-Token-Current-Limit',
+			'X-Token-RateLimit-Limit',
 			tokenCurrentLimit === Infinity
 				? 'unlimited'
 				: tokenCurrentLimit.toString()
 		);
+		response.set('X-Token-RateLimit-Remaining', tokenCurrentLeft);
 		response.set(
-			'X-Token-Current-Usage',
-			user.tokenCurrentUsage.toString()
-		);
-		response.set('X-Token-Current-Left', tokenCurrentLeft);
-		response.set(
-			'X-Token-Expiration',
-			user.tokenExpiration ? user.tokenExpiration.toISOString() : ''
+			'X-Token-RateLimit-Reset',
+			rateLimitInfo.resetTime
+				? new Date(rateLimitInfo.resetTime * 1000).toISOString()
+				: 'never'
 		);
 	}
 

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { promises as fs } from 'fs';
 import * as nodemailer from 'nodemailer';
 import * as path from 'path';
+
 @Injectable()
 export class MailService {
 	private readonly logger = new Logger(MailService.name);

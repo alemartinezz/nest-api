@@ -3,7 +3,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { UserRole } from 'src/modules/auth/dtos/roles.enum';
+
 export type UserDocument = User & Document;
+
 @Schema({ timestamps: true })
 export class User extends Document {
 	@Prop({ required: true, unique: true, nullable: false })
@@ -35,4 +37,5 @@ export class User extends Document {
 	@Prop({ required: false })
 	updatedAt: Date;
 }
+
 export const UserSchema = SchemaFactory.createForClass(User);

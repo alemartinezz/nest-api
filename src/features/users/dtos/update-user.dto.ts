@@ -6,9 +6,11 @@ export class UpdateUserDto {
 	@IsOptional()
 	@IsEmail()
 	email?: string;
+
 	@IsOptional()
 	@IsEnum(UserRole)
 	role?: UserRole;
+
 	@IsOptional()
 	@IsString()
 	token?: string;

@@ -2,12 +2,14 @@
 
 import { Injectable } from '@nestjs/common';
 import { UserRole } from 'src/modules/auth/dtos/roles.enum';
+
 export interface RateLimitConfig {
 	maxRequests: number;
 	windowSizeInSeconds: number;
 	tokenCurrentLimit: number;
 	tokenExpirationDays: number;
 }
+
 @Injectable()
 export class RateLimitConfigService {
 	private readonly rateLimits: Record<UserRole, RateLimitConfig> = {
@@ -30,6 +32,7 @@ export class RateLimitConfigService {
 			tokenExpirationDays: 30 // Token valid for 30 days
 		}
 	};
+
 	getRateLimit(role: UserRole): RateLimitConfig {
 		return this.rateLimits[role];
 	}

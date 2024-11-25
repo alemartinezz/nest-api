@@ -12,6 +12,7 @@ import {
 	IsString,
 	validateSync
 } from 'class-validator';
+
 export class EnvConfig {
 	@IsString({ message: 'NODE_ENV must be a string.' })
 	@IsNotEmpty({ message: 'NODE_ENV is required.' })
@@ -117,6 +118,7 @@ export class EnvConfig {
 	@IsNotEmpty({ message: 'SUPER_PASSWORD is required.' })
 	SUPER_PASSWORD: string;
 }
+
 export function validateEnv(configEnv: Record<string, unknown>): EnvConfig {
 	const validatedConfig = plainToClass(EnvConfig, configEnv, {
 		enableImplicitConversion: true

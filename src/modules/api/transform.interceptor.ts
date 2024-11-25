@@ -10,6 +10,7 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ResponseFormat } from './response.format';
+
 @Injectable()
 export class TransformInterceptor<T>
 	implements NestInterceptor<T, ResponseFormat<T>>
