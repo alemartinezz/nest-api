@@ -2,7 +2,6 @@
 
 import {
 	BadRequestException,
-	ForbiddenException,
 	Injectable,
 	Logger,
 	NotFoundException,
@@ -306,27 +305,12 @@ export class MyUsersService {
 
 	async updateUser(
 		authenticatedUser: UserDocument,
-		userIdToUpdate: string,
 		updates: UpdateUserDto
-	): Promise<{ user: UserResponseDto }> {
-		const isSuperUser = authenticatedUser.role === UserRole.SUPER;
+	): Promise<{ user: UserResponseDto; changesDetected: boolean }> {
+		let changesDetected = false;
 
-		if (!isSuperUser) {
-			if (
-				userIdToUpdate &&
-				userIdToUpdate !== authenticatedUser._id.toString()
-			) {
-				throw new ForbiddenException(
-					'You can only update your own profile.'
-				);
-			}
-		}
+		const user = await this.userModel.findById(authenticatedUser.id);
 
-		const userId =
-			isSuperUser && userIdToUpdate
-				? userIdToUpdate
-				: authenticatedUser._id.toString();
-		const user = await this.userModel.findById(userId);
 		if (!user) {
 			throw new NotFoundException(`User not found.`);
 		}
@@ -351,10 +335,12 @@ export class MyUsersService {
 						);
 					}
 					fieldsToUpdate[key] = normalizedEmail;
+					changesDetected = true;
 				}
 			} else {
 				if (user[key] !== value) {
 					fieldsToUpdate[key] = value;
+					changesDetected = true;
 				}
 			}
 		}
@@ -362,7 +348,7 @@ export class MyUsersService {
 			const userDto = plainToClass(UserResponseDto, user, {
 				excludeExtraneousValues: true
 			});
-			return { user: userDto };
+			return { user: userDto, changesDetected };
 		}
 		try {
 			const updatedUser = await this.userModel.findByIdAndUpdate(
@@ -370,18 +356,17 @@ export class MyUsersService {
 				{ $set: fieldsToUpdate },
 				{ new: true }
 			);
+
 			const userDto = plainToClass(UserResponseDto, updatedUser, {
 				excludeExtraneousValues: true
 			});
-			return { user: userDto };
+			return { user: userDto, changesDetected };
 		} catch (error) {
 			this.logger.error(
 				`Error updating user with id ${user._id}.`,
 				error
 			);
-			throw new BadRequestException(
-				'Failed to update user due to a database error.'
-			);
+			throw new BadRequestException('Failed to update user.');
 		}
 	}
 }

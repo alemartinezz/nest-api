@@ -6,7 +6,6 @@ import {
 	Get,
 	HttpCode,
 	HttpStatus,
-	Param,
 	Post,
 	Put
 } from '@nestjs/common';
@@ -114,16 +113,16 @@ export class MyUsersController {
 	@Put('me')
 	async updateProfile(
 		@CurrentUser() authenticatedUser: UserDocument,
-		@Body() updates: UpdateUserDto,
-		@Param('id') id: string
+		@Body() updates: UpdateUserDto
 	): Promise<{ user: UserResponseDto; messages: string }> {
-		const userIdToUpdate: string = id;
-
-		const { user } = await this.usersService.updateUser(
+		const { user, changesDetected } = await this.usersService.updateUser(
 			authenticatedUser,
-			userIdToUpdate,
 			updates
 		);
+
+		if (!changesDetected) {
+			return { user, messages: 'No changes detected.' };
+		}
 
 		return { user, messages: 'Profile updated successfully.' };
 	}
