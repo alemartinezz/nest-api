@@ -40,17 +40,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
 			// Log unexpected errors
 			this.logger.error('Unhandled exception', exception as any);
 		}
-		const metadata = response.getHeaders();
-		if ('x-powered-by' in metadata) {
-			delete metadata['x-powered-by'];
-		}
+
 		const statusText = HttpStatus[statusCode] || 'UnknownStatus';
 		const errorResponse: ResponseFormat<any> = {
 			status: statusText,
 			code: statusCode,
 			data: null,
-			messages: messages ?? null,
-			metadata
+			messages: messages ?? null
 		};
 		response.status(statusCode).json(errorResponse);
 	}

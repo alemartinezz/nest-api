@@ -24,11 +24,6 @@ export class TransformInterceptor<T>
 				const ctx = context.switchToHttp();
 				const response = ctx.getResponse();
 				const statusCode: number = response.statusCode;
-				const metadata = { ...response.getHeaders() };
-				// Remove 'x-powered-by' header if present
-				if (metadata['x-powered-by']) {
-					delete metadata['x-powered-by'];
-				}
 				const statusText = HttpStatus[statusCode] || 'UnknownStatus';
 				// Extract messages from data
 				const messages = data.messages ?? null;
@@ -38,8 +33,7 @@ export class TransformInterceptor<T>
 					status: statusText,
 					code: statusCode,
 					data: dataWithoutMessages,
-					messages,
-					metadata
+					messages
 				};
 			})
 		);

@@ -5,5 +5,4 @@ export interface ResponseFormat<T> {
 	code: number;
 	data: any;
 	messages: null | string[];
-	metadata: any;
 }
