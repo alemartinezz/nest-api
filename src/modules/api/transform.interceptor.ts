@@ -1,4 +1,4 @@
-// /src/modules/api/transform.interceptor.ts
+// src/modules/api/transform.interceptor.ts
 
 import {
 	CallHandler,

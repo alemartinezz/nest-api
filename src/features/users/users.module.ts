@@ -1,4 +1,4 @@
-// /src/features/users/users.module.ts
+// src/features/users/users.module.ts
 
 import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -11,7 +11,6 @@ import {
 import { MyNotificationsModule } from '../notifications/notifications.module';
 import { MyUsersController } from './users.controller';
 import { MyUsersService } from './users.service';
-
 @Module({
 	imports: [
 		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),

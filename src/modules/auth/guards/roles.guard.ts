@@ -1,4 +1,4 @@
-// /src/modules/auth/guards/roles.guard.ts
+// src/modules/auth/guards/roles.guard.ts
 
 import {
 	CanActivate,

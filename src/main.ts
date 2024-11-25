@@ -1,4 +1,4 @@
-// /src/main.ts
+// src/main.ts
 
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

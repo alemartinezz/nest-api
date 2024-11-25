@@ -1,4 +1,4 @@
-// /src/modules/config/configuration.ts
+// src/modules/config/configuration.ts
 
 import { Logger } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';

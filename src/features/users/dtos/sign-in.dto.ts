@@ -1,4 +1,4 @@
-// /src/features/users/dtos/sign-in.dto.ts
+// src/features/users/dtos/sign-in.dto.ts
 
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 export class SignInDto {

@@ -1,4 +1,4 @@
-// /src/app/app.module.ts
+// src/app/app.module.ts
 
 import { Module, forwardRef } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
@@ -11,7 +11,6 @@ import { ConfigModule } from 'src/modules/config/config.module';
 import { MongooseModulex } from 'src/modules/mongoose/mongoose.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-
 @Module({
 	imports: [
 		ConfigModule,

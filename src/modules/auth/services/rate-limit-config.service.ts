@@ -1,4 +1,4 @@
-// /src/modules/auth/services/rate-limit-config.service.ts
+// src/modules/auth/services/rate-limit-config.service.ts
 
 import { Injectable } from '@nestjs/common';
 import { UserRole } from 'src/modules/auth/dtos/roles.enum';

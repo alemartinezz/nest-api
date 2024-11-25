@@ -1,4 +1,4 @@
-// /src/modules/api/http-exception.filter.ts
+// src/modules/api/http-exception.filter.ts
 
 import {
 	ArgumentsHost,

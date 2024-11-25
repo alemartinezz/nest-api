@@ -1,4 +1,4 @@
-// /src/modules/auth/auth.module.ts
+// src/modules/auth/auth.module.ts
 
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -11,7 +11,6 @@ import { RolesGuard } from './guards/roles.guard';
 import { TokenRateLimitGuard } from './guards/token-rate-limit.guard';
 import { RateLimitConfigService } from './services/rate-limit-config.service';
 import { SuperUserService } from './services/super-user.service';
-
 @Module({
 	imports: [
 		ConfigModule,

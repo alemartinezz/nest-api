@@ -1,4 +1,4 @@
-// /src/features/users/dtos/sign-up.dto.ts
+// src/features/users/dtos/sign-up.dto.ts
 
 import {
 	IsEmail,

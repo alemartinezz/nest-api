@@ -1,4 +1,4 @@
-// /src/features/users/users.service.ts
+// src/features/users/users.service.ts
 
 import {
 	BadRequestException,

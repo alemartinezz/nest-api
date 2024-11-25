@@ -1,8 +1,10 @@
-// /src/modules/mails/mails.service.ts
+// src/modules/mails/mails.service.ts
 
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { promises as fs } from 'fs';
 import * as nodemailer from 'nodemailer';
+import * as path from 'path';
 @Injectable()
 export class MailService {
 	private readonly logger = new Logger(MailService.name);
@@ -16,6 +18,47 @@ export class MailService {
 				pass: this.configService.get<string>('EMAIL_PASSWORD')
 			}
 		});
+	}
+	/**
+	 * Loads an HTML template and replaces placeholders with provided variables.
+	 * @param templateName - The name of the template file (without extension).
+	 * @param variables - A record of variables to replace in the template.
+	 * @returns The processed HTML string.
+	 */
+	async loadTemplate(
+		templateName: string,
+		variables: Record<string, string>
+	): Promise<string> {
+		try {
+			const templatePath = path.join(
+				__dirname,
+				'..',
+				'..',
+				'data',
+				'templates',
+				`${templateName}.html`
+			);
+			// Check if the file exists asynchronously
+			try {
+				await fs.access(templatePath);
+			} catch {
+				console.error(
+					'Template file does not exist at:',
+					templatePath
+				);
+				throw new Error('Template file does not exist.');
+			}
+			let template = await fs.readFile(templatePath, 'utf-8');
+			for (const [key, value] of Object.entries(variables)) {
+				const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+				template = template.replace(regex, value);
+			}
+			return template;
+		} catch (error) {
+			throw new Error(
+				`Failed to load template "${templateName}": ${error.message}`
+			);
+		}
 	}
 	/**
 	 * Sends an email with the provided HTML content.

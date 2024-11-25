@@ -1,4 +1,4 @@
-// /src/modules/auth/decorators/current-user.decorator.ts
+// src/modules/auth/decorators/current-user.decorator.ts
 
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { UserDocument } from '../../mongoose/schemas/user.schema';

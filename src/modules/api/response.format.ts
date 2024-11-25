@@ -1,4 +1,4 @@
-// /src/modules/api/response.format.ts
+// src/modules/api/response.format.ts
 
 export interface ResponseFormat<T> {
 	status: string;

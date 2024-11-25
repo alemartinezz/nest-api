@@ -1,4 +1,4 @@
-// /src/features/users/users.controller.ts
+// src/features/users/users.controller.ts
 
 import {
 	Body,
@@ -22,7 +22,6 @@ import { UpdateUserDto } from './dtos/update-user.dto';
 import { UserResponseDto } from './dtos/user-response.dto';
 import { VerifyEmailDto } from './dtos/verify-email.dto';
 import { MyUsersService } from './users.service';
-
 @Controller('users')
 export class MyUsersController {
 	constructor(private readonly usersService: MyUsersService) {}

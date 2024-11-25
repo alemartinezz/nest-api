@@ -1,4 +1,4 @@
-// /src/app/app.service.ts
+// src/app/app.service.ts
 
 import { Injectable } from '@nestjs/common';
 @Injectable()

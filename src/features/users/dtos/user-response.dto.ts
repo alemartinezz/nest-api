@@ -1,4 +1,4 @@
-// /src/features/users/dtos/user-response.dto.ts
+// src/features/users/dtos/user-response.dto.ts
 
 import { Exclude, Expose, Transform } from 'class-transformer';
 export class UserResponseDto {

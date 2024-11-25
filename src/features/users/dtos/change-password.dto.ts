@@ -1,4 +1,4 @@
-// /src/features/users/dtos/change-password.dto.ts
+// src/features/users/dtos/change-password.dto.ts
 
 import {
 	IsNotEmpty,

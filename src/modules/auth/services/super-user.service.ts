@@ -1,4 +1,4 @@
-// /src/modules/auth/services/super-user.service.ts
+// src/modules/auth/services/super-user.service.ts
 
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

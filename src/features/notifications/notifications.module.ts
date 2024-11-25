@@ -1,4 +1,4 @@
-// /src/features/notifications/notifications.module.ts
+// src/features/notifications/notifications.module.ts
 
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -9,7 +9,6 @@ import {
 	UserSchema
 } from '../../modules/mongoose/schemas/user.schema';
 import { MyNotificationsService } from './notifications.service';
-
 @Module({
 	imports: [
 		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),

@@ -1,9 +1,8 @@
-// /src/modules/mongoose/mongoose.module.ts
+// src/modules/mongoose/mongoose.module.ts
 
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-
 @Module({
 	imports: [
 		MongooseModule.forRootAsync({
