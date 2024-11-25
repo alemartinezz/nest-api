@@ -1,4 +1,4 @@
-// src/modules/auth/dtos/roles.enum.ts
+// src/modules/auth/dtos/roles.guards.dto.ts
 
 export enum UserRole {
 	SUPER = 'super',

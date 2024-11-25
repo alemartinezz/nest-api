@@ -2,7 +2,7 @@
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { UserRole } from 'src/modules/auth/dtos/roles.enum';
+import { UserRole } from 'src/modules/auth/dtos/roles.guards.dto';
 
 export type UserDocument = User & Document;
 

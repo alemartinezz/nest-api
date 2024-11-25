@@ -5,11 +5,11 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from 'argon2';
 import { Model } from 'mongoose';
-import { UserRole } from 'src/modules/auth/dtos/roles.enum';
 import {
 	User,
 	UserDocument
 } from 'src/modules/mongoose/schemas/user.schema';
+import { UserRole } from '../dtos/roles.guards.dto';
 
 @Injectable()
 export class SuperUserService implements OnModuleInit {

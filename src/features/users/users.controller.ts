@@ -11,10 +11,10 @@ import {
 	Query
 } from '@nestjs/common';
 import { Public } from 'src/modules/auth/decorators/public.decorator';
+import { UserRole } from 'src/modules/auth/dtos/roles.guards.dto';
 import { UserDocument } from 'src/modules/mongoose/schemas/user.schema';
 import { CurrentUser } from '../../modules/auth/decorators/current-user.decorator';
 import { Roles } from '../../modules/auth/decorators/roles.decorator';
-import { UserRole } from '../../modules/auth/dtos/roles.enum';
 import { ChangePasswordDto } from './dtos/change-password.dto';
 import { GetUserDto } from './dtos/get-user.dto';
 import { ResendVerificationDto } from './dtos/resend-verification.dto';

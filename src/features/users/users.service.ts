@@ -13,7 +13,7 @@ import { plainToClass } from 'class-transformer';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
 import { GetUserDto } from 'src/features/users/dtos/get-user.dto';
-import { UserRole } from 'src/modules/auth/dtos/roles.enum';
+import { UserRole } from 'src/modules/auth/dtos/roles.guards.dto';
 import { RateLimitConfigService } from 'src/modules/auth/services/rate-limit-config.service';
 import {
 	User,

@@ -14,7 +14,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Request, Response } from 'express';
 import { Model } from 'mongoose';
 import { IS_PUBLIC_KEY } from 'src/modules/auth/decorators/public.decorator';
-import { UserRole } from 'src/modules/auth/dtos/roles.enum';
 import {
 	RateLimitConfig,
 	RateLimitConfigService
@@ -23,7 +22,12 @@ import {
 	User,
 	UserDocument
 } from 'src/modules/mongoose/schemas/user.schema';
-import { RateLimitInfo } from '../dtos/rate-limit.interface';
+import { UserRole } from '../dtos/roles.guards.dto';
+
+interface RateLimitInfo {
+	count: number;
+	resetTime: number;
+}
 
 @Injectable()
 export class TokenRateLimitGuard implements CanActivate {
