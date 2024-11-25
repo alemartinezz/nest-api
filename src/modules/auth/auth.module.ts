@@ -6,6 +6,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MyNotificationsModule } from 'src/features/notifications/notifications.module';
 import { User, UserSchema } from '../mongoose/schemas/user.schema';
+import { RedisModule } from '../redis/redis.module';
 import { SharedModule } from '../shared.module';
 import { IpRateLimitGuard } from './guards/ip-rate-limit.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -18,7 +19,8 @@ import { SuperUserService } from './services/super-user.service';
 		ConfigModule,
 		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
 		MyNotificationsModule,
-		SharedModule
+		SharedModule,
+		RedisModule
 	],
 	providers: [
 		RateLimitConfigService,

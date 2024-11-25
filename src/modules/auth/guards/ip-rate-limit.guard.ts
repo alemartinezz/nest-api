@@ -11,73 +11,85 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Request, Response } from 'express';
+import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
+import { RedisService } from '../../redis/redis.service';
 
 @Injectable()
 export class IpRateLimitGuard implements CanActivate {
 	private readonly logger = new Logger(IpRateLimitGuard.name);
-	private ipRateLimitMap: Map<
-		string,
-		{ count: number; resetTime: number }
-	> = new Map();
-
 	private readonly maxRequests: number;
 	private readonly windowSizeInSeconds: number;
+	private rateLimiter: RateLimiterRedis;
 
 	constructor(
 		private readonly configService: ConfigService,
-		private readonly reflector: Reflector
+		private readonly reflector: Reflector,
+		private readonly redisService: RedisService
 	) {
 		this.maxRequests =
 			this.configService.get<number>('IP_RATE_LIMIT_MAX');
 		this.windowSizeInSeconds = this.configService.get<number>(
 			'IP_RATE_LIMIT_WINDOW'
 		);
+
+		const redisClient = this.redisService.getClient();
+
+		this.rateLimiter = new RateLimiterRedis({
+			storeClient: redisClient,
+			keyPrefix: 'ip',
+			points: this.maxRequests,
+			duration: this.windowSizeInSeconds
+		});
 	}
 
-	canActivate(context: ExecutionContext): boolean {
+	async canActivate(context: ExecutionContext): Promise<boolean> {
+		const isPublic = this.reflector.get<boolean>(
+			'isPublic',
+			context.getHandler()
+		);
+
 		const ctx = context.switchToHttp();
 		const request = ctx.getRequest<Request>();
 		const response = ctx.getResponse<Response>();
 
 		const ipAddress = request.ip || request.connection.remoteAddress;
 
-		const currentTime = Math.floor(Date.now() / 1000);
-		const ipRateLimitKey = `ip-rate-limit:${ipAddress}`;
+		try {
+			if (!isPublic) {
+				const rateLimiterRes =
+					await this.rateLimiter.consume(ipAddress);
 
-		let rateLimitInfo = this.ipRateLimitMap.get(ipRateLimitKey);
+				response.set(
+					'X-IP-RateLimit-Limit',
+					this.maxRequests.toString()
+				);
+				response.set(
+					'X-IP-RateLimit-Remaining',
+					rateLimiterRes.remainingPoints.toString()
+				);
+				response.set(
+					'X-IP-RateLimit-Reset',
+					new Date(
+						Date.now() + rateLimiterRes.msBeforeNext
+					).toUTCString()
+				);
+			}
 
-		if (!rateLimitInfo || currentTime > rateLimitInfo.resetTime) {
-			rateLimitInfo = {
-				count: 1,
-				resetTime: currentTime + this.windowSizeInSeconds
-			};
-			this.ipRateLimitMap.set(ipRateLimitKey, rateLimitInfo);
-		} else {
-			rateLimitInfo.count += 1;
-		}
+			return true;
+		} catch (rateLimiterRes) {
+			if (rateLimiterRes instanceof RateLimiterRes) {
+				response.set(
+					'Retry-After',
+					Math.ceil(rateLimiterRes.msBeforeNext / 1000).toString()
+				);
+			}
 
-		if (rateLimitInfo.count > this.maxRequests) {
 			this.logger.warn(`IP ${ipAddress} has exceeded the rate limit`);
+
 			throw new HttpException(
 				'Too many requests from this IP, please try again later.',
 				HttpStatus.TOO_MANY_REQUESTS
 			);
 		}
-
-		const remainingRequests = Math.max(
-			this.maxRequests - rateLimitInfo.count,
-			0
-		);
-		response.set('X-IP-RateLimit-Limit', this.maxRequests.toString());
-		response.set(
-			'X-IP-RateLimit-Remaining',
-			remainingRequests.toString()
-		);
-		response.set(
-			'X-IP-RateLimit-Reset',
-			new Date(rateLimitInfo.resetTime * 1000).toUTCString()
-		);
-
-		return true;
 	}
 }

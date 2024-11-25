@@ -13,6 +13,7 @@ import { Reflector } from '@nestjs/core';
 import { InjectModel } from '@nestjs/mongoose';
 import { Request, Response } from 'express';
 import { Model } from 'mongoose';
+import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
 import { IS_PUBLIC_KEY } from 'src/modules/auth/decorators/public.decorator';
 import {
 	RateLimitConfig,
@@ -22,24 +23,21 @@ import {
 	User,
 	UserDocument
 } from 'src/modules/mongoose/schemas/user.schema';
+import { RedisService } from '../../redis/redis.service';
 import { UserRole } from '../dtos/roles.guards.dto';
-
-interface RateLimitInfo {
-	count: number;
-	resetTime: number;
-}
 
 @Injectable()
 export class TokenRateLimitGuard implements CanActivate {
 	private readonly logger = new Logger(TokenRateLimitGuard.name);
 	private readonly TOKEN_REGEX: RegExp;
-	private rateLimitMap: Map<string, RateLimitInfo> = new Map();
+	private rateLimiter: RateLimiterRedis;
 
 	constructor(
 		private readonly configService: ConfigService,
 		@InjectModel(User.name) private userModel: Model<UserDocument>,
 		private readonly reflector: Reflector,
-		private readonly rateLimitConfigService: RateLimitConfigService
+		private readonly rateLimitConfigService: RateLimitConfigService,
+		private readonly redisService: RedisService
 	) {
 		const tokenRegexString =
 			this.configService.get<string>('TOKEN_REGEX');
@@ -50,6 +48,13 @@ export class TokenRateLimitGuard implements CanActivate {
 			throw new Error('TOKEN_REGEX is required.');
 		}
 		this.TOKEN_REGEX = new RegExp(tokenRegexString);
+
+		const redisClient = this.redisService.getClient();
+
+		this.rateLimiter = new RateLimiterRedis({
+			storeClient: redisClient,
+			keyPrefix: 'token'
+		});
 	}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -65,7 +70,6 @@ export class TokenRateLimitGuard implements CanActivate {
 			const authHeader = this.getAuthHeader(request);
 			if (!authHeader) {
 				if (isPublic) {
-					// Do not set token rate limit headers for public endpoints
 					return true;
 				}
 				this.logger.warn('Authorization header missing');
@@ -150,8 +154,7 @@ export class TokenRateLimitGuard implements CanActivate {
 		rateLimitConfig: RateLimitConfig,
 		response: Response
 	): Promise<void> {
-		const { maxRequests, windowSizeInSeconds, tokenCurrentLimit } =
-			rateLimitConfig;
+		const { tokenCurrentLimit } = rateLimitConfig;
 
 		if (this.isTokenExpired(user)) {
 			this.logger.warn(
@@ -174,8 +177,7 @@ export class TokenRateLimitGuard implements CanActivate {
 		}
 
 		await this.incrementTokenUsage(user);
-
-		this.handleRateLimiting(user, rateLimitConfig, response);
+		await this.handleRateLimiting(user, rateLimitConfig, response);
 	}
 
 	private isTokenExpired(user: UserDocument): boolean {
@@ -191,28 +193,37 @@ export class TokenRateLimitGuard implements CanActivate {
 		return user.tokenCurrentUsage >= tokenCurrentLimit;
 	}
 
-	private handleRateLimiting(
+	private async handleRateLimiting(
 		user: UserDocument,
 		rateLimitConfig: RateLimitConfig,
 		response: Response
-	): void {
+	): Promise<void> {
 		const { maxRequests, windowSizeInSeconds } = rateLimitConfig;
-		const currentTime = Math.floor(Date.now() / 1000);
 		const tokenRateLimitKey = `token-rate-limit:${user.token}`;
 
-		let rateLimitInfo = this.rateLimitMap.get(tokenRateLimitKey);
+		try {
+			const rateLimiterRes = await this.rateLimiter.consume(
+				tokenRateLimitKey,
+				1,
+				{
+					points: maxRequests,
+					duration: windowSizeInSeconds
+				}
+			);
 
-		if (!rateLimitInfo || currentTime > rateLimitInfo.resetTime) {
-			rateLimitInfo = {
-				count: 1,
-				resetTime: currentTime + windowSizeInSeconds
-			};
-			this.rateLimitMap.set(tokenRateLimitKey, rateLimitInfo);
-		} else {
-			rateLimitInfo.count += 1;
-		}
-
-		if (rateLimitInfo.count > maxRequests) {
+			this.setResponseHeaders(
+				user,
+				rateLimitConfig,
+				rateLimiterRes,
+				response
+			);
+		} catch (rateLimiterRes) {
+			if (rateLimiterRes instanceof RateLimiterRes) {
+				response.set(
+					'Retry-After',
+					Math.ceil(rateLimiterRes.msBeforeNext / 1000).toString()
+				);
+			}
 			this.logger.warn(
 				`Token ${user.token} with role ${user.role} has exceeded the rate limit`
 			);
@@ -221,19 +232,12 @@ export class TokenRateLimitGuard implements CanActivate {
 				HttpStatus.TOO_MANY_REQUESTS
 			);
 		}
-
-		this.setResponseHeaders(
-			user,
-			rateLimitConfig,
-			rateLimitInfo,
-			response
-		);
 	}
 
 	private setResponseHeaders(
 		user: UserDocument,
 		rateLimitConfig: RateLimitConfig,
-		rateLimitInfo: RateLimitInfo,
+		rateLimiterRes: RateLimiterRes,
 		response: Response
 	): void {
 		const { tokenCurrentLimit } = rateLimitConfig;
@@ -255,8 +259,10 @@ export class TokenRateLimitGuard implements CanActivate {
 		response.set('X-Token-RateLimit-Remaining', tokenCurrentLeft);
 		response.set(
 			'X-Token-RateLimit-Reset',
-			rateLimitInfo.resetTime
-				? new Date(rateLimitInfo.resetTime * 1000).toUTCString()
+			rateLimiterRes.msBeforeNext
+				? new Date(
+						Date.now() + rateLimiterRes.msBeforeNext
+					).toUTCString()
 				: 'never'
 		);
 	}
