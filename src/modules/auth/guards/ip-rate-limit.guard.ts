@@ -75,7 +75,7 @@ export class IpRateLimitGuard implements CanActivate {
 		);
 		response.set(
 			'X-IP-RateLimit-Reset',
-			new Date(rateLimitInfo.resetTime * 1000).toISOString()
+			new Date(rateLimitInfo.resetTime * 1000).toUTCString()
 		);
 
 		return true;

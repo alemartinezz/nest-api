@@ -252,7 +252,7 @@ export class TokenRateLimitGuard implements CanActivate {
 		response.set(
 			'X-Token-RateLimit-Reset',
 			rateLimitInfo.resetTime
-				? new Date(rateLimitInfo.resetTime * 1000).toISOString()
+				? new Date(rateLimitInfo.resetTime * 1000).toUTCString()
 				: 'never'
 		);
 	}
