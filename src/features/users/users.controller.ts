@@ -142,4 +142,21 @@ export class MyUsersController {
 			messages: 'User retrieved successfully.'
 		};
 	}
+
+	@Roles(UserRole.ADMIN)
+	@HttpCode(HttpStatus.OK)
+	@Put()
+	async updateUserById(
+		@Query() params: GetUserDto,
+		@Body() updates: UpdateUserDto
+	): Promise<{ user: UserResponseDto; messages: string }> {
+		const { user, changesDetected } =
+			await this.usersService.updateUserById(params, updates);
+
+		if (!changesDetected) {
+			return { user, messages: 'No changes detected.' };
+		}
+
+		return { user, messages: 'User updated successfully.' };
+	}
 }

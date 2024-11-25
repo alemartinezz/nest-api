@@ -25,10 +25,13 @@ export class TransformInterceptor<T>
 				const response = ctx.getResponse();
 				const statusCode: number = response.statusCode;
 				const statusText = HttpStatus[statusCode] || 'UnknownStatus';
+
 				// Extract messages from data
 				const messages = data.messages ?? null;
+
 				// Remove messages from data
 				const { messages: _, ...dataWithoutMessages } = data;
+
 				return {
 					status: statusText,
 					code: statusCode,
