@@ -58,9 +58,9 @@ export class TokenRateLimitGuard implements CanActivate {
 	}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
-		const isPublic = this.reflector.get<boolean>(
+		const isPublic = this.reflector.getAllAndOverride<boolean>(
 			IS_PUBLIC_KEY,
-			context.getHandler()
+			[context.getHandler(), context.getClass()]
 		);
 		const ctx = context.switchToHttp();
 		const request = ctx.getRequest<Request>();

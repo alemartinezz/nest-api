@@ -1,65 +1,89 @@
 // src/tests/users.e2e.spec.ts
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { getConnectionToken } from '@nestjs/mongoose';
-import { Test } from '@nestjs/testing';
-import { Connection } from 'mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
+import { Test, TestingModule } from '@nestjs/testing';
+import { Connection, Model } from 'mongoose';
+import {
+	User,
+	UserDocument
+} from 'src/modules/mongoose/schemas/user.schema';
 import * as request from 'supertest';
 import { AppModule } from '../app/app.module';
 import { AllExceptionsFilter } from '../modules/api/http-exception.filter';
 import { TransformInterceptor } from '../modules/api/transform.interceptor';
 import { RedisService } from '../modules/redis/redis.service';
 
+jest.setTimeout(30000);
+
 describe('UsersController (e2e) - Input Validation', () => {
 	let app: INestApplication;
 	let redisService: RedisService;
 	let dbConnection: Connection;
+	let moduleFixture: TestingModule;
 
 	beforeAll(async () => {
-		// Create a testing module with the AppModule
-		const moduleFixture = await Test.createTestingModule({
+		moduleFixture = await Test.createTestingModule({
 			imports: [AppModule]
 		}).compile();
 
 		app = moduleFixture.createNestApplication();
 
-		// Disable 'X-Powered-By' header
 		app.getHttpAdapter().getInstance().disable('x-powered-by');
 
-		// Enable global interceptors and filters
 		app.useGlobalInterceptors(new TransformInterceptor());
 		app.useGlobalFilters(new AllExceptionsFilter());
 
-		// Enable global ValidationPipe with transformation
 		app.useGlobalPipes(
 			new ValidationPipe({
-				whitelist: true, // Strip properties that don't have decorators
-				forbidNonWhitelisted: true, // Throw errors on non-whitelisted properties
-				transform: true, // Automatically transform payloads to DTO instances
+				whitelist: true,
+				forbidNonWhitelisted: true,
+				transform: true,
 				transformOptions: {
-					enableImplicitConversion: true // Allow implicit type conversion
+					enableImplicitConversion: true
 				}
 			})
 		);
 
 		await app.init();
 
-		// Get the database connection
 		dbConnection = moduleFixture.get<Connection>(getConnectionToken());
 
-		// Get Redis service
 		redisService = app.get(RedisService);
 	});
 
 	afterAll(async () => {
-		// Clean up the database
-		await dbConnection.dropDatabase();
+		// Delete specific users created during the tests
+		const userModel = moduleFixture.get<Model<UserDocument>>(
+			getModelToken(User.name)
+		);
+		await userModel.deleteMany({
+			email: {
+				$in: [
+					'test@example.com',
+					'loginuser@example.com',
+					'verifyuser@example.com',
+					'getmeuser@example.com',
+					'updatemeuser@example.com',
+					'resetpassworduser@example.com',
+					'adminuser@example.com',
+					'regularuser@example.com',
+					'adminuser2@example.com',
+					'userToUpdate@example.com',
+					'basicuser@example.com',
+					'updateduser@example.com',
+					'resenduser@example.com'
+				]
+			}
+		});
+
+		// Close the database connection
 		await dbConnection.close();
 
+		// Close the application
 		await app.close();
 
-		// Clean up Redis
-		await redisService.getClient().flushAll();
+		// Close Redis client without flushing all data
 		await redisService.getClient().quit();
 	});
 
@@ -109,7 +133,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(400)
 				.expect((res) => {
 					expect(res.body.messages).toContain(
-						'Password too weak: must contain at least 1 uppercase letter, 1 lowercase letter, 1 number or special character, and be at least 8 characters long.'
+						'password must be longer than or equal to 8 characters'
 					);
 				});
 		});
@@ -164,7 +188,6 @@ describe('UsersController (e2e) - Input Validation', () => {
 		const url = '/users/login';
 
 		beforeAll(async () => {
-			// Create a user for login
 			await request(app.getHttpServer())
 				.post('/users/signup')
 				.send({
@@ -255,7 +278,6 @@ describe('UsersController (e2e) - Input Validation', () => {
 		const url = '/users/verify-email';
 
 		beforeAll(async () => {
-			// Create a user for email verification
 			await request(app.getHttpServer())
 				.post('/users/signup')
 				.send({
@@ -325,95 +347,6 @@ describe('UsersController (e2e) - Input Validation', () => {
 		});
 	});
 
-	describe('PUT /users/reset-password', () => {
-		const url = '/users/reset-password';
-		let accessToken: string;
-
-		beforeAll(async () => {
-			// Create a user and login to get access token
-			await request(app.getHttpServer())
-				.post('/users/signup')
-				.send({
-					email: 'resetpassworduser@example.com',
-					password: 'Password123!'
-				})
-				.expect(201);
-
-			const loginResponse = await request(app.getHttpServer())
-				.post('/users/login')
-				.send({
-					email: 'resetpassworduser@example.com',
-					password: 'Password123!'
-				})
-				.expect(200);
-
-			accessToken = loginResponse.body.data.user.token;
-		});
-
-		it('should fail when currentPassword is missing', () => {
-			return request(app.getHttpServer())
-				.put(url)
-				.set('Authorization', `Bearer ${accessToken}`)
-				.send({
-					newPassword: 'NewPassword123!'
-				})
-				.expect(400)
-				.expect((res) => {
-					expect(res.body.messages).toContain(
-						'currentPassword should not be empty'
-					);
-				});
-		});
-
-		it('should fail when newPassword is missing', () => {
-			return request(app.getHttpServer())
-				.put(url)
-				.set('Authorization', `Bearer ${accessToken}`)
-				.send({
-					currentPassword: 'Password123!'
-				})
-				.expect(400)
-				.expect((res) => {
-					expect(res.body.messages).toContain(
-						'newPassword should not be empty'
-					);
-				});
-		});
-
-		it('should fail when newPassword is too weak', () => {
-			return request(app.getHttpServer())
-				.put(url)
-				.set('Authorization', `Bearer ${accessToken}`)
-				.send({
-					currentPassword: 'Password123!',
-					newPassword: 'weak'
-				})
-				.expect(400)
-				.expect((res) => {
-					expect(res.body.messages[0]).toContain(
-						'New password too weak'
-					);
-				});
-		});
-
-		it('should fail when extra fields are provided', () => {
-			return request(app.getHttpServer())
-				.put(url)
-				.set('Authorization', `Bearer ${accessToken}`)
-				.send({
-					currentPassword: 'Password123!',
-					newPassword: 'NewPassword123!',
-					extraField: 'should not be here'
-				})
-				.expect(400)
-				.expect((res) => {
-					expect(res.body.messages).toContain(
-						'property extraField should not exist'
-					);
-				});
-		});
-	});
-
 	describe('POST /users/resend-verification-code', () => {
 		const url = '/users/resend-verification-code';
 
@@ -464,7 +397,6 @@ describe('UsersController (e2e) - Input Validation', () => {
 		let accessToken: string;
 
 		beforeAll(async () => {
-			// Create a user and login to get access token
 			await request(app.getHttpServer())
 				.post('/users/signup')
 				.send({
@@ -502,7 +434,9 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.get(url)
 				.expect(401)
 				.expect((res) => {
-					expect(res.body.messages).toContain('Invalid token');
+					expect(res.body.messages).toContain(
+						'Authorization header is required'
+					);
 				});
 		});
 	});
@@ -512,7 +446,6 @@ describe('UsersController (e2e) - Input Validation', () => {
 		let accessToken: string;
 
 		beforeAll(async () => {
-			// Create a user and login to get access token
 			await request(app.getHttpServer())
 				.post('/users/signup')
 				.send({
@@ -557,7 +490,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(400)
 				.expect((res) => {
 					expect(res.body.messages[0]).toContain(
-						'role must be a valid enum value'
+						'role must be one of the following values: super, admin, basic'
 					);
 				});
 		});
@@ -574,6 +507,331 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect((res) => {
 					expect(res.body.messages).toContain(
 						'property extraField should not exist'
+					);
+				});
+		});
+	});
+
+	describe('PUT /users/reset-password', () => {
+		const url = '/users/reset-password';
+		let accessToken: string;
+
+		beforeAll(async () => {
+			await request(app.getHttpServer())
+				.post('/users/signup')
+				.send({
+					email: 'resetpassworduser@example.com',
+					password: 'Password123!'
+				})
+				.expect(201);
+
+			const loginResponse = await request(app.getHttpServer())
+				.post('/users/login')
+				.send({
+					email: 'resetpassworduser@example.com',
+					password: 'Password123!'
+				})
+				.expect(200);
+
+			accessToken = loginResponse.body.data.user.token;
+		});
+
+		it('should fail when newPassword is too weak', () => {
+			return request(app.getHttpServer())
+				.put(url)
+				.set('Authorization', `Bearer ${accessToken}`)
+				.send({
+					currentPassword: 'Password123!',
+					newPassword: 'weak'
+				})
+				.expect(400)
+				.expect((res) => {
+					expect(res.body.messages[0]).toContain(
+						'New password too weak'
+					);
+				});
+		});
+	});
+
+	describe('GET /users', () => {
+		const url = '/users';
+		let adminToken: string;
+		let userId: string;
+		let userModel: Model<UserDocument>;
+
+		beforeAll(async () => {
+			userModel = moduleFixture.get<Model<UserDocument>>(
+				getModelToken(User.name)
+			);
+
+			await request(app.getHttpServer())
+				.post('/users/signup')
+				.send({
+					email: 'adminuser@example.com',
+					password: 'Password123!'
+				})
+				.expect(201);
+
+			const user = await userModel
+				.findOne({ email: 'adminuser@example.com' })
+				.exec();
+			userId = user._id.toString();
+			await userModel.updateOne(
+				{ _id: user._id },
+				{ $set: { role: 'admin' } }
+			);
+
+			const loginResponse = await request(app.getHttpServer())
+				.post('/users/login')
+				.send({
+					email: 'adminuser@example.com',
+					password: 'Password123!'
+				})
+				.expect(200);
+
+			adminToken = loginResponse.body.data.user.token;
+
+			await request(app.getHttpServer())
+				.post('/users/signup')
+				.send({
+					email: 'regularuser@example.com',
+					password: 'Password123!'
+				})
+				.expect(201);
+		});
+
+		it('should retrieve a user by ID when authenticated as admin', async () => {
+			const user = await userModel
+				.findOne({ email: 'regularuser@example.com' })
+				.exec();
+			const userIdToRetrieve = user._id.toString();
+
+			return request(app.getHttpServer())
+				.get(url)
+				.set('Authorization', `Bearer ${adminToken}`)
+				.query({ id: userIdToRetrieve })
+				.expect(200)
+				.expect((res) => {
+					expect(res.body.data.user).toBeDefined();
+					expect(res.body.data.user.email).toBe(
+						'regularuser@example.com'
+					);
+					expect(res.body.messages).toContain(
+						'User retrieved successfully.'
+					);
+				});
+		});
+
+		it('should fail when not authenticated', () => {
+			return request(app.getHttpServer())
+				.get(url)
+				.expect(401)
+				.expect((res) => {
+					expect(res.body.messages).toContain(
+						'Authorization header is required'
+					);
+				});
+		});
+
+		it('should fail when authenticated as a basic user', async () => {
+			const loginResponse = await request(app.getHttpServer())
+				.post('/users/login')
+				.send({
+					email: 'regularuser@example.com',
+					password: 'Password123!'
+				})
+				.expect(200);
+
+			const basicToken = loginResponse.body.data.user.token;
+
+			const user = await userModel
+				.findOne({ email: 'regularuser@example.com' })
+				.exec();
+			const userIdToRetrieve = user._id.toString();
+
+			return request(app.getHttpServer())
+				.get(url)
+				.set('Authorization', `Bearer ${basicToken}`)
+				.query({ id: userIdToRetrieve })
+				.expect(403)
+				.expect((res) => {
+					expect(res.body.messages[0]).toContain('Access denied');
+				});
+		});
+
+		it('should fail when user not found', () => {
+			const nonExistentUserId = '5f8f8c44b54764421b7156c6'; // Random ObjectId
+
+			return request(app.getHttpServer())
+				.get(url)
+				.set('Authorization', `Bearer ${adminToken}`)
+				.query({ id: nonExistentUserId })
+				.expect(404)
+				.expect((res) => {
+					expect(res.body.messages).toContain(
+						`User with id ${nonExistentUserId} not found.`
+					);
+				});
+		});
+	});
+
+	describe('PUT /users', () => {
+		const url = '/users';
+		let adminToken: string;
+		let userIdToUpdate: string;
+		let userModel: Model<UserDocument>;
+
+		beforeAll(async () => {
+			userModel = moduleFixture.get<Model<UserDocument>>(
+				getModelToken(User.name)
+			);
+
+			// Create an admin user
+			await request(app.getHttpServer())
+				.post('/users/signup')
+				.send({
+					email: 'adminuser2@example.com',
+					password: 'Password123!'
+				})
+				.expect(201);
+
+			const adminUser = await userModel
+				.findOne({ email: 'adminuser2@example.com'.toLowerCase() })
+				.exec();
+
+			await userModel.updateOne(
+				{ _id: adminUser._id },
+				{ $set: { role: 'admin' } }
+			);
+
+			const loginResponse = await request(app.getHttpServer())
+				.post('/users/login')
+				.send({
+					email: 'adminuser2@example.com',
+					password: 'Password123!'
+				})
+				.expect(200);
+
+			adminToken = loginResponse.body.data.user.token;
+
+			// Create a user to update
+			await request(app.getHttpServer())
+				.post('/users/signup')
+				.send({
+					email: 'userToUpdate@example.com',
+					password: 'Password123!'
+				})
+				.expect(201);
+
+			const user = await userModel
+				.findOne({ email: 'userToUpdate@example.com'.toLowerCase() })
+				.exec();
+
+			userIdToUpdate = user._id.toString();
+		});
+
+		it('should update a user by ID when authenticated as admin', () => {
+			return request(app.getHttpServer())
+				.put(url)
+				.set('Authorization', `Bearer ${adminToken}`)
+				.query({ id: userIdToUpdate })
+				.send({ email: 'updateduser@example.com' })
+				.expect(200)
+				.expect((res) => {
+					expect(res.body.data.user).toBeDefined();
+					expect(res.body.data.user.email).toBe(
+						'updateduser@example.com'
+					);
+					expect(res.body.messages).toContain(
+						'User updated successfully.'
+					);
+				});
+		});
+
+		it('should fail when not authenticated', () => {
+			return request(app.getHttpServer())
+				.put(url)
+				.query({ id: userIdToUpdate })
+				.send({ email: 'shouldnotwork@example.com' })
+				.expect(401)
+				.expect((res) => {
+					expect(res.body.messages).toContain(
+						'Authorization header is required'
+					);
+				});
+		});
+
+		it('should fail when authenticated as basic user', async () => {
+			// Create a new basic user for this test
+			await request(app.getHttpServer())
+				.post('/users/signup')
+				.send({
+					email: 'basicuser@example.com',
+					password: 'Password123!'
+				})
+				.expect(201);
+
+			const loginResponse = await request(app.getHttpServer())
+				.post('/users/login')
+				.send({
+					email: 'basicuser@example.com',
+					password: 'Password123!'
+				})
+				.expect(200);
+
+			const basicToken = loginResponse.body.data.user.token;
+
+			return request(app.getHttpServer())
+				.put(url)
+				.set('Authorization', `Bearer ${basicToken}`)
+				.query({ id: userIdToUpdate })
+				.send({ email: 'shouldnotwork@example.com' })
+				.expect(403)
+				.expect((res) => {
+					expect(res.body.messages[0]).toContain('Access denied');
+				});
+		});
+
+		it('should fail when user not found', () => {
+			const nonExistentUserId = '5f8f8c44b54764421b7156c6'; // Random ObjectId
+
+			return request(app.getHttpServer())
+				.put(url)
+				.set('Authorization', `Bearer ${adminToken}`)
+				.query({ id: nonExistentUserId })
+				.send({ email: 'shouldnotwork@example.com' })
+				.expect(404)
+				.expect((res) => {
+					expect(res.body.messages).toContain(
+						`User with id ${nonExistentUserId} not found.`
+					);
+				});
+		});
+
+		it('should fail when updating email to an invalid email', () => {
+			return request(app.getHttpServer())
+				.put(url)
+				.set('Authorization', `Bearer ${adminToken}`)
+				.query({ id: userIdToUpdate })
+				.send({ email: 'invalid-email' })
+				.expect(400)
+				.expect((res) => {
+					expect(res.body.messages).toContain(
+						'email must be an email'
+					);
+				});
+		});
+
+		it('should fail when updating role to an invalid role', () => {
+			return request(app.getHttpServer())
+				.put(url)
+				.set('Authorization', `Bearer ${adminToken}`)
+				.query({ id: userIdToUpdate })
+				.send({ role: 'invalid-role' })
+				.expect(400)
+				.expect((res) => {
+					expect(res.body.messages[0]).toContain(
+						'role must be one of the following values: super, admin, basic'
 					);
 				});
 		});

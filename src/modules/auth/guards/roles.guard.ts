@@ -16,9 +16,9 @@ export class RolesGuard implements CanActivate {
 	constructor(private reflector: Reflector) {}
 
 	canActivate(context: ExecutionContext): boolean {
-		const isPublic = this.reflector.get<boolean>(
+		const isPublic = this.reflector.getAllAndOverride<boolean>(
 			IS_PUBLIC_KEY,
-			context.getHandler()
+			[context.getHandler(), context.getClass()]
 		);
 
 		if (isPublic) {

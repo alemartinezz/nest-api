@@ -13,6 +13,7 @@ import { Reflector } from '@nestjs/core';
 import { Request, Response } from 'express';
 import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
 import { RedisService } from '../../redis/redis.service';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
 export class IpRateLimitGuard implements CanActivate {
@@ -43,9 +44,9 @@ export class IpRateLimitGuard implements CanActivate {
 	}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
-		const isPublic = this.reflector.get<boolean>(
-			'isPublic',
-			context.getHandler()
+		const isPublic = this.reflector.getAllAndOverride<boolean>(
+			IS_PUBLIC_KEY,
+			[context.getHandler(), context.getClass()]
 		);
 
 		const ctx = context.switchToHttp();

@@ -152,9 +152,23 @@ export class MyUsersService {
 			user = await this.userModel.findOne({ token: params.token });
 		}
 		if (!user) {
-			throw new NotFoundException(
-				`User not found with provided parameters.`
-			);
+			if (params.id) {
+				throw new NotFoundException(
+					`User with id ${params.id} not found.`
+				);
+			} else if (params.email) {
+				throw new NotFoundException(
+					`User with email ${params.email} not found.`
+				);
+			} else if (params.token) {
+				throw new NotFoundException(
+					`User with token ${params.token} not found.`
+				);
+			} else {
+				throw new NotFoundException(
+					`User not found with provided parameters.`
+				);
+			}
 		}
 		if (!user.role) {
 			user.role = UserRole.BASIC;

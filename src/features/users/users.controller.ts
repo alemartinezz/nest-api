@@ -66,6 +66,19 @@ export class MyUsersController {
 		return { messages: 'Email verified successfully.' };
 	}
 
+	@Public()
+	@Post('resend-verification-code')
+	@HttpCode(HttpStatus.OK)
+	async resendVerificationCode(
+		@Body() resendVerificationDto: ResendVerificationDto
+	): Promise<{ messages: string }> {
+		const { email } = resendVerificationDto;
+
+		await this.usersService.resendVerificationCode(email);
+
+		return { messages: 'Verification code resent successfully.' };
+	}
+
 	@Roles(UserRole.ADMIN, UserRole.BASIC)
 	@Put('reset-password')
 	@HttpCode(HttpStatus.OK)
@@ -79,19 +92,6 @@ export class MyUsersController {
 		);
 
 		return { messages: 'Password updated successfully.' };
-	}
-
-	@Roles(UserRole.ADMIN, UserRole.BASIC)
-	@Post('resend-verification-code')
-	@HttpCode(HttpStatus.OK)
-	async resendVerificationCode(
-		@Body() resendVerificationDto: ResendVerificationDto
-	): Promise<{ messages: string }> {
-		const { email } = resendVerificationDto;
-
-		await this.usersService.resendVerificationCode(email);
-
-		return { messages: 'Verification code resent successfully.' };
 	}
 
 	@Roles(UserRole.ADMIN, UserRole.BASIC)
