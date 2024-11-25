@@ -16,9 +16,9 @@ import {
 export class EnvConfig {
 	@IsString({ message: 'NODE_ENV must be a string.' })
 	@IsNotEmpty({ message: 'NODE_ENV is required.' })
-	@IsIn(['development', 'staging', 'production'], {
+	@IsIn(['development', 'staging', 'production', 'test'], {
 		message:
-			'NODE_ENV must be one of the following: development, staging, production.'
+			'NODE_ENV must be one of the following: development, staging, production, test.'
 	})
 	NODE_ENV: string;
 
