@@ -2,6 +2,7 @@
 
 import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
 import { UserRole } from '../../../modules/auth/dtos/roles.enum';
+
 export class UpdateUserDto {
 	@IsOptional()
 	@IsEmail()

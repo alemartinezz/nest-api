@@ -241,15 +241,19 @@ export class MyUsersService {
 
 	async verifyEmail(email: string, code: string): Promise<void> {
 		email = email.toLowerCase();
+
 		const user = await this.userModel.findOne({ email });
+
 		if (!user) {
 			throw new NotFoundException(
 				`User with email ${email} not found.`
 			);
 		}
+
 		if (user.emailVerified) {
 			throw new BadRequestException('Email is already verified.');
 		}
+
 		if (
 			!user.emailVerificationCode ||
 			!user.emailVerificationCodeExpires ||
@@ -257,35 +261,45 @@ export class MyUsersService {
 		) {
 			throw new BadRequestException('Invalid verification code.');
 		}
+
 		if (user.emailVerificationCodeExpires < new Date()) {
 			throw new BadRequestException('Verification code has expired.');
 		}
+
 		user.emailVerified = true;
 		user.emailVerificationCode = undefined;
 		user.emailVerificationCodeExpires = undefined;
+
 		await user.save();
 	}
 
 	async resendVerificationCode(email: string): Promise<void> {
 		email = email.toLowerCase();
+
 		const user = await this.userModel.findOne({ email });
 		if (!user) {
 			throw new NotFoundException(
 				`User with email ${email} not found.`
 			);
 		}
+
 		if (user.emailVerified) {
 			throw new BadRequestException('Email is already verified.');
 		}
+
 		const emailVerificationCode = Math.floor(
 			100000 + Math.random() * 900000
 		).toString();
+
 		const emailVerificationCodeExpires = new Date(
 			Date.now() + 24 * 60 * 60 * 1000
 		);
+
 		user.emailVerificationCode = emailVerificationCode;
 		user.emailVerificationCodeExpires = emailVerificationCodeExpires;
+
 		await user.save();
+
 		await this.myNotificationsService.sendVerificationEmail(
 			email,
 			emailVerificationCode
@@ -294,12 +308,15 @@ export class MyUsersService {
 
 	async getUserById(userId: string): Promise<UserResponseDto> {
 		const user = await this.userModel.findById(userId);
+
 		if (!user) {
 			throw new NotFoundException(`User with id ${userId} not found.`);
 		}
+
 		const userDto = plainToClass(UserResponseDto, user, {
 			excludeExtraneousValues: true
 		});
+
 		return userDto;
 	}
 

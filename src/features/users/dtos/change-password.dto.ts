@@ -11,6 +11,7 @@ export class ChangePasswordDto {
 	@IsString()
 	@IsNotEmpty()
 	currentPassword: string;
+
 	@IsString()
 	@IsNotEmpty()
 	@MinLength(8, {

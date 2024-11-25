@@ -7,7 +7,8 @@ import {
 	HttpCode,
 	HttpStatus,
 	Post,
-	Put
+	Put,
+	Query
 } from '@nestjs/common';
 import { Public } from 'src/modules/auth/decorators/public.decorator';
 import { UserDocument } from 'src/modules/mongoose/schemas/user.schema';
@@ -15,6 +16,7 @@ import { CurrentUser } from '../../modules/auth/decorators/current-user.decorato
 import { Roles } from '../../modules/auth/decorators/roles.decorator';
 import { UserRole } from '../../modules/auth/dtos/roles.enum';
 import { ChangePasswordDto } from './dtos/change-password.dto';
+import { GetUserDto } from './dtos/get-user.dto';
 import { ResendVerificationDto } from './dtos/resend-verification.dto';
 import { SignInDto } from './dtos/sign-in.dto';
 import { SignUpDto } from './dtos/sign-up.dto';
@@ -125,5 +127,19 @@ export class MyUsersController {
 		}
 
 		return { user, messages: 'Profile updated successfully.' };
+	}
+
+	@Roles(UserRole.ADMIN)
+	@HttpCode(HttpStatus.OK)
+	@Get()
+	async getUserById(
+		@Query() params: GetUserDto
+	): Promise<{ user: UserResponseDto; messages: string }> {
+		const userDto = await this.usersService.getUserById(params.id);
+
+		return {
+			user: userDto,
+			messages: 'User retrieved successfully.'
+		};
 	}
 }

@@ -10,6 +10,7 @@ import * as path from 'path';
 export class MailService {
 	private readonly logger = new Logger(MailService.name);
 	private transporter: nodemailer.Transporter;
+
 	constructor(private readonly configService: ConfigService) {
 		// Configure the transporter with Gmail SMTP settings
 		this.transporter = nodemailer.createTransport({
@@ -20,6 +21,7 @@ export class MailService {
 			}
 		});
 	}
+
 	/**
 	 * Loads an HTML template and replaces placeholders with provided variables.
 	 * @param templateName - The name of the template file (without extension).
@@ -61,6 +63,7 @@ export class MailService {
 			);
 		}
 	}
+
 	/**
 	 * Sends an email with the provided HTML content.
 	 * @param email - The recipient's email address.

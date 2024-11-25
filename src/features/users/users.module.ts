@@ -11,6 +11,7 @@ import {
 import { MyNotificationsModule } from '../notifications/notifications.module';
 import { MyUsersController } from './users.controller';
 import { MyUsersService } from './users.service';
+
 @Module({
 	imports: [
 		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
