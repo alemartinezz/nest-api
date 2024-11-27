@@ -3,6 +3,6 @@
 export interface ResponseFormat<T> {
 	status: string;
 	code: number;
-	data: any;
-	messages: null | string[];
+	data: T | null;
+	messages: string[] | null;
 }

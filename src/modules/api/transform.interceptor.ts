@@ -36,7 +36,7 @@ export class TransformInterceptor<T>
 					status: statusText,
 					code: statusCode,
 					data: dataWithoutMessages,
-					messages
+					messages: [messages].flat().filter((m) => m !== null)
 				};
 			})
 		);
