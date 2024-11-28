@@ -25,7 +25,9 @@ export class RedisService {
 
 	private getRedisUrl(): string {
 		const host = this.configService.get<string>('REDIS_HOST');
+
 		const port = this.configService.get<number>('REDIS_PORT');
+
 		const password = this.configService.get<string>('REDIS_PASSWORD');
 
 		if (password) {

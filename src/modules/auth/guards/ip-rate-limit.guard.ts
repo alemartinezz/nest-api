@@ -29,6 +29,7 @@ export class IpRateLimitGuard implements CanActivate {
 	) {
 		this.maxRequests =
 			this.configService.get<number>('IP_RATE_LIMIT_MAX');
+
 		this.windowSizeInSeconds = this.configService.get<number>(
 			'IP_RATE_LIMIT_WINDOW'
 		);
@@ -50,7 +51,9 @@ export class IpRateLimitGuard implements CanActivate {
 		);
 
 		const ctx = context.switchToHttp();
+
 		const request = ctx.getRequest<Request>();
+
 		const response = ctx.getResponse<Response>();
 
 		const ipAddress = request.ip || request.connection.remoteAddress;
@@ -64,10 +67,12 @@ export class IpRateLimitGuard implements CanActivate {
 					'X-IP-RateLimit-Limit',
 					this.maxRequests.toString()
 				);
+
 				response.set(
 					'X-IP-RateLimit-Remaining',
 					rateLimiterRes.remainingPoints.toString()
 				);
+
 				response.set(
 					'X-IP-RateLimit-Reset',
 					new Date(

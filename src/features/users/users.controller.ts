@@ -62,7 +62,9 @@ export class MyUsersController {
 		@Body() verifyEmailDto: VerifyEmailDto
 	): Promise<{ messages: string }> {
 		const { email, code } = verifyEmailDto;
+
 		await this.usersService.verifyEmail(email, code);
+
 		return { messages: 'Email verified successfully.' };
 	}
 
@@ -100,12 +102,12 @@ export class MyUsersController {
 	async getProfile(
 		@CurrentUser() authenticatedUser: UserDocument
 	): Promise<{ user: UserResponseDto; messages: string }> {
-		const userDto = await this.usersService.getUserById(
+		const { user } = await this.usersService.getUserById(
 			authenticatedUser.id
 		);
 
 		return {
-			user: userDto,
+			user,
 			messages: 'Profile retrieved successfully.'
 		};
 	}
@@ -135,10 +137,10 @@ export class MyUsersController {
 	async getUserById(
 		@Query() params: GetUserDto
 	): Promise<{ user: UserResponseDto; messages: string }> {
-		const userDto = await this.usersService.getUserById(params.id);
+		const { user } = await this.usersService.getUserById(params.id);
 
 		return {
-			user: userDto,
+			user,
 			messages: 'User retrieved successfully.'
 		};
 	}

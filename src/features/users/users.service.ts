@@ -36,15 +36,21 @@ export class MyUsersService {
 
 	async signUp(email: string, password: string): Promise<UserResponseDto> {
 		this.logger.debug(`Attempting to create user with email: ${email}`);
+
 		email = email.toLowerCase();
+
 		const existingUser = await this.userModel.findOne({ email }).exec();
+
 		if (existingUser) {
 			this.logger.warn(`Email ${email} is already in use.`);
+
 			throw new BadRequestException(
 				`Email ${email} is already in use.`
 			);
 		}
+
 		let hashedPassword: string;
+
 		try {
 			hashedPassword = await argon2.hash(password, {
 				type: argon2.argon2id,
@@ -54,21 +60,28 @@ export class MyUsersService {
 			});
 		} catch (error) {
 			this.logger.error('Error hashing password', error);
+
 			throw new BadRequestException('Failed to hash password.');
 		}
+
 		const emailVerificationCode = Math.floor(
 			100000 + Math.random() * 900000
 		).toString();
+
 		const emailVerificationCodeExpires = new Date(
 			Date.now() + 24 * 60 * 60 * 1000
 		);
+
 		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(
 			UserRole.BASIC
 		);
+
 		const { tokenCurrentLimit, tokenExpirationDays } = rateLimitConfig;
+
 		const tokenExpiration = new Date(
 			Date.now() + tokenExpirationDays * 24 * 60 * 60 * 1000
 		);
+
 		const user = new this.userModel({
 			email,
 			emailVerified: false,
@@ -82,12 +95,15 @@ export class MyUsersService {
 			tokenCurrentLimit,
 			tokenExpiration
 		});
+
 		try {
 			await user.save();
+
 			await this.myNotificationsService.sendVerificationEmail(
 				email,
 				emailVerificationCode
 			);
+
 			this.logger.log(
 				`User created successfully with email: ${email}`
 			);
@@ -96,13 +112,20 @@ export class MyUsersService {
 				`Error creating user with email: ${email}`,
 				error
 			);
+
 			throw new BadRequestException(
 				'Failed to create user due to a database error.'
 			);
 		}
-		const userDto = plainToClass(UserResponseDto, user, {
-			excludeExtraneousValues: true
-		});
+
+		const userDto: UserResponseDto = plainToClass(
+			UserResponseDto,
+			user,
+			{
+				excludeExtraneousValues: true
+			}
+		);
+
 		return userDto;
 	}
 
@@ -111,29 +134,41 @@ export class MyUsersService {
 		password: string
 	): Promise<{ user: UserResponseDto }> {
 		email = email.toLowerCase();
+
 		const user = await this.userModel
 			.findOne({ email })
 			.select('+password')
 			.lean()
 			.exec();
+
 		if (!user) {
 			throw new NotFoundException(
 				`User with email: ${email} not found.`
 			);
 		}
+
 		let isPasswordValid: boolean;
+
 		try {
 			isPasswordValid = await argon2.verify(user.password, password);
 		} catch (error) {
 			this.logger.error('Error verifying password', error);
+
 			throw new UnauthorizedException('Invalid password.');
 		}
+
 		if (!isPasswordValid) {
 			throw new UnauthorizedException('Invalid password.');
 		}
-		const userDto = plainToClass(UserResponseDto, user, {
-			excludeExtraneousValues: true
-		});
+
+		const userDto: UserResponseDto = plainToClass(
+			UserResponseDto,
+			user,
+			{
+				excludeExtraneousValues: true
+			}
+		);
+
 		return { user: userDto };
 	}
 
@@ -143,7 +178,9 @@ export class MyUsersService {
 				'At least one of id, email, or token must be provided.'
 			);
 		}
+
 		let user: UserDocument | null = null;
+
 		if (params.id) {
 			user = await this.userModel.findById(params.id);
 		} else if (params.email) {
@@ -151,6 +188,7 @@ export class MyUsersService {
 		} else if (params.token) {
 			user = await this.userModel.findOne({ token: params.token });
 		}
+
 		if (!user) {
 			if (params.id) {
 				throw new NotFoundException(
@@ -170,11 +208,15 @@ export class MyUsersService {
 				);
 			}
 		}
+
 		if (!user.role) {
 			user.role = UserRole.BASIC;
+
 			await user.save();
+
 			this.logger.log(`Assigned default role to user ${user.email}`);
 		}
+
 		return user;
 	}
 
@@ -183,7 +225,9 @@ export class MyUsersService {
 		changePasswordDto: ChangePasswordDto
 	): Promise<void> {
 		const { currentPassword, newPassword } = changePasswordDto;
+
 		let isPasswordValid: boolean;
+
 		try {
 			isPasswordValid = await argon2.verify(
 				authenticatedUser.password,
@@ -191,12 +235,16 @@ export class MyUsersService {
 			);
 		} catch (error) {
 			this.logger.error('Error verifying current password', error);
+
 			throw new UnauthorizedException('Invalid current password.');
 		}
+
 		if (!isPasswordValid) {
 			throw new UnauthorizedException('Invalid current password.');
 		}
+
 		let hashedNewPassword: string;
+
 		try {
 			hashedNewPassword = await argon2.hash(newPassword, {
 				type: argon2.argon2id,
@@ -206,32 +254,42 @@ export class MyUsersService {
 			});
 		} catch (error) {
 			this.logger.error('Error hashing new password', error);
+
 			throw new BadRequestException('Failed to hash new password.');
 		}
+
 		authenticatedUser.password = hashedNewPassword;
+
 		try {
 			await authenticatedUser.save();
+
 			this.logger.log(
 				`Password updated successfully for user ${authenticatedUser.email}`
 			);
 		} catch (error) {
 			this.logger.error('Error saving new password', error);
+
 			throw new BadRequestException(
 				'Failed to update password due to a database error.'
 			);
 		}
+
 		return;
 	}
 
 	async regenerateToken(authenticatedUser: UserDocument): Promise<string> {
 		const token = crypto.randomBytes(16).toString('hex');
+
 		const rateLimitConfig = this.rateLimitConfigService.getRateLimit(
 			authenticatedUser.role
 		);
+
 		const { tokenCurrentLimit, tokenExpirationDays } = rateLimitConfig;
+
 		const tokenExpiration = new Date(
 			Date.now() + tokenExpirationDays * 24 * 60 * 60 * 1000
 		);
+
 		try {
 			await this.userModel.findByIdAndUpdate(authenticatedUser._id, {
 				$set: {
@@ -246,10 +304,12 @@ export class MyUsersService {
 				`Error regenerating token for user ${authenticatedUser.email}`,
 				error
 			);
+
 			throw new BadRequestException(
 				'Failed to regenerate token due to a database error.'
 			);
 		}
+
 		return token;
 	}
 
@@ -281,7 +341,9 @@ export class MyUsersService {
 		}
 
 		user.emailVerified = true;
+
 		user.emailVerificationCode = undefined;
+
 		user.emailVerificationCodeExpires = undefined;
 
 		await user.save();
@@ -291,6 +353,7 @@ export class MyUsersService {
 		email = email.toLowerCase();
 
 		const user = await this.userModel.findOne({ email });
+
 		if (!user) {
 			throw new NotFoundException(
 				`User with email ${email} not found.`
@@ -310,6 +373,7 @@ export class MyUsersService {
 		);
 
 		user.emailVerificationCode = emailVerificationCode;
+
 		user.emailVerificationCodeExpires = emailVerificationCodeExpires;
 
 		await user.save();
@@ -320,18 +384,22 @@ export class MyUsersService {
 		);
 	}
 
-	async getUserById(userId: string): Promise<UserResponseDto> {
+	async getUserById(userId: string): Promise<{ user: UserResponseDto }> {
 		const user = await this.userModel.findById(userId);
 
 		if (!user) {
 			throw new NotFoundException(`User with id ${userId} not found.`);
 		}
 
-		const userDto = plainToClass(UserResponseDto, user, {
-			excludeExtraneousValues: true
-		});
+		const userDto: UserResponseDto = plainToClass(
+			UserResponseDto,
+			user,
+			{
+				excludeExtraneousValues: true
+			}
+		);
 
-		return userDto;
+		return { user: userDto };
 	}
 
 	async updateUser(
@@ -347,16 +415,20 @@ export class MyUsersService {
 		}
 
 		const fieldsToUpdate: Partial<UserDocument> = {};
+
 		for (const [key, value] of Object.entries(updates)) {
 			if (!(key in user)) {
 				continue;
 			}
+
 			if (key === 'email') {
 				const normalizedEmail = value.toLowerCase();
+
 				if (user.email.toLowerCase() !== normalizedEmail) {
 					const existingUser = await this.userModel
 						.findOne({ email: normalizedEmail })
 						.exec();
+
 					if (
 						existingUser &&
 						existingUser._id.toString() !== user._id.toString()
@@ -365,22 +437,28 @@ export class MyUsersService {
 							`Email ${value} is already in use.`
 						);
 					}
+
 					fieldsToUpdate[key] = normalizedEmail;
+
 					changesDetected = true;
 				}
 			} else {
 				if (user[key] !== value) {
 					fieldsToUpdate[key] = value;
+
 					changesDetected = true;
 				}
 			}
 		}
+
 		if (Object.keys(fieldsToUpdate).length === 0) {
 			const userDto = plainToClass(UserResponseDto, user, {
 				excludeExtraneousValues: true
 			});
+
 			return { user: userDto, changesDetected };
 		}
+
 		try {
 			const updatedUser = await this.userModel.findByIdAndUpdate(
 				user._id,
@@ -391,12 +469,14 @@ export class MyUsersService {
 			const userDto = plainToClass(UserResponseDto, updatedUser, {
 				excludeExtraneousValues: true
 			});
+
 			return { user: userDto, changesDetected };
 		} catch (error) {
 			this.logger.error(
 				`Error updating user with id ${user._id}.`,
 				error
 			);
+
 			throw new BadRequestException('Failed to update user.');
 		}
 	}
@@ -414,16 +494,20 @@ export class MyUsersService {
 		}
 
 		const fieldsToUpdate: Partial<UserDocument> = {};
+
 		for (const [key, value] of Object.entries(updates)) {
 			if (!(key in user)) {
 				continue;
 			}
+
 			if (key === 'email') {
 				const normalizedEmail = value.toLowerCase();
+
 				if (user.email.toLowerCase() !== normalizedEmail) {
 					const existingUser = await this.userModel
 						.findOne({ email: normalizedEmail })
 						.exec();
+
 					if (
 						existingUser &&
 						existingUser._id.toString() !== user._id.toString()
@@ -432,6 +516,7 @@ export class MyUsersService {
 							`Email ${value} is already in use.`
 						);
 					}
+
 					fieldsToUpdate[key] = normalizedEmail;
 				}
 			} else {
@@ -440,12 +525,15 @@ export class MyUsersService {
 				}
 			}
 		}
+
 		if (Object.keys(fieldsToUpdate).length === 0) {
 			const userDto = plainToClass(UserResponseDto, user, {
 				excludeExtraneousValues: true
 			});
+
 			return { user: userDto, changesDetected: false };
 		}
+
 		try {
 			const updatedUser = await this.userModel.findByIdAndUpdate(
 				user._id,
@@ -456,12 +544,14 @@ export class MyUsersService {
 			const userDto = plainToClass(UserResponseDto, updatedUser, {
 				excludeExtraneousValues: true
 			});
+
 			return { user: userDto, changesDetected: true };
 		} catch (error) {
 			this.logger.error(
 				`Error updating user with id ${user._id}.`,
 				error
 			);
+
 			throw new BadRequestException('Failed to update user.');
 		}
 	}

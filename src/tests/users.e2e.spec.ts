@@ -18,8 +18,11 @@ jest.setTimeout(30000);
 
 describe('UsersController (e2e) - Input Validation', () => {
 	let app: INestApplication;
+
 	let redisService: RedisService;
+
 	let dbConnection: Connection;
+
 	let moduleFixture: TestingModule;
 
 	beforeAll(async () => {
@@ -32,6 +35,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 		app.getHttpAdapter().getInstance().disable('x-powered-by');
 
 		app.useGlobalInterceptors(new TransformInterceptor());
+
 		app.useGlobalFilters(new AllExceptionsFilter());
 
 		app.useGlobalPipes(
@@ -57,6 +61,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 		const userModel = moduleFixture.get<Model<UserDocument>>(
 			getModelToken(User.name)
 		);
+
 		await userModel.deleteMany({
 			email: {
 				$in: [
@@ -100,9 +105,11 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(201)
 				.expect((res) => {
 					expect(res.body.data.user).toBeDefined();
+
 					expect(res.body.data.user.email).toBe(
 						'test@example.com'
 					);
+
 					expect(res.body.messages).toContain(
 						'User created successfully'
 					);
@@ -207,9 +214,11 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(200)
 				.expect((res) => {
 					expect(res.body.data.user).toBeDefined();
+
 					expect(res.body.data.user.email).toBe(
 						'loginuser@example.com'
 					);
+
 					expect(res.body.messages).toContain('Login successful');
 				});
 		});
@@ -394,6 +403,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 
 	describe('GET /users/me', () => {
 		const url = '/users/me';
+
 		let accessToken: string;
 
 		beforeAll(async () => {
@@ -423,6 +433,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(200)
 				.expect((res) => {
 					expect(res.body.data.user).toBeDefined();
+
 					expect(res.body.messages).toContain(
 						'Profile retrieved successfully.'
 					);
@@ -443,6 +454,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 
 	describe('PUT /users/me', () => {
 		const url = '/users/me';
+
 		let accessToken: string;
 
 		beforeAll(async () => {
@@ -514,6 +526,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 
 	describe('PUT /users/reset-password', () => {
 		const url = '/users/reset-password';
+
 		let accessToken: string;
 
 		beforeAll(async () => {
@@ -555,8 +568,11 @@ describe('UsersController (e2e) - Input Validation', () => {
 
 	describe('GET /users', () => {
 		const url = '/users';
+
 		let adminToken: string;
+
 		let userId: string;
+
 		let userModel: Model<UserDocument>;
 
 		beforeAll(async () => {
@@ -575,7 +591,9 @@ describe('UsersController (e2e) - Input Validation', () => {
 			const user = await userModel
 				.findOne({ email: 'adminuser@example.com' })
 				.exec();
+
 			userId = user._id.toString();
+
 			await userModel.updateOne(
 				{ _id: user._id },
 				{ $set: { role: 'admin' } }
@@ -604,6 +622,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 			const user = await userModel
 				.findOne({ email: 'regularuser@example.com' })
 				.exec();
+
 			const userIdToRetrieve = user._id.toString();
 
 			return request(app.getHttpServer())
@@ -613,9 +632,11 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(200)
 				.expect((res) => {
 					expect(res.body.data.user).toBeDefined();
+
 					expect(res.body.data.user.email).toBe(
 						'regularuser@example.com'
 					);
+
 					expect(res.body.messages).toContain(
 						'User retrieved successfully.'
 					);
@@ -647,6 +668,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 			const user = await userModel
 				.findOne({ email: 'regularuser@example.com' })
 				.exec();
+
 			const userIdToRetrieve = user._id.toString();
 
 			return request(app.getHttpServer())
@@ -677,8 +699,11 @@ describe('UsersController (e2e) - Input Validation', () => {
 
 	describe('PUT /users', () => {
 		const url = '/users';
+
 		let adminToken: string;
+
 		let userIdToUpdate: string;
+
 		let userModel: Model<UserDocument>;
 
 		beforeAll(async () => {
@@ -739,9 +764,11 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(200)
 				.expect((res) => {
 					expect(res.body.data.user).toBeDefined();
+
 					expect(res.body.data.user.email).toBe(
 						'updateduser@example.com'
 					);
+
 					expect(res.body.messages).toContain(
 						'User updated successfully.'
 					);

@@ -1,10 +1,15 @@
 // src/main.ts
 
 import { ValidationPipe } from '@nestjs/common';
+
 import { ConfigService } from '@nestjs/config';
+
 import { NestFactory } from '@nestjs/core';
+
 import { AppModule } from './app/app.module';
+
 import { AllExceptionsFilter } from './modules/api/http-exception.filter';
+
 import { TransformInterceptor } from './modules/api/transform.interceptor';
 
 async function bootstrap() {
@@ -17,6 +22,7 @@ async function bootstrap() {
 
 	// Enable global interceptors and filters
 	app.useGlobalInterceptors(new TransformInterceptor());
+
 	app.useGlobalFilters(new AllExceptionsFilter());
 
 	// Enable global ValidationPipe with transformation
@@ -32,8 +38,11 @@ async function bootstrap() {
 	);
 
 	const configService = app.get(ConfigService);
+
 	const protocol = configService.get<string>('PROTOCOL');
+
 	const apiPort = configService.get<number>('API_PORT');
+
 	const apiHost = configService.get<string>('API_HOST');
 
 	await app.listen(apiPort, apiHost, () => {
@@ -42,4 +51,5 @@ async function bootstrap() {
 		);
 	});
 }
+
 bootstrap();

@@ -16,14 +16,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
 	catch(exception: unknown, host: ArgumentsHost) {
 		const ctx = host.switchToHttp();
+
 		const response = ctx.getResponse();
 
 		let statusCode: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+
 		let code: string = 'InternalServerError';
+
 		let messages: string[] = ['An unexpected error occurred'];
 
 		if (exception instanceof HttpException) {
 			statusCode = exception.getStatus();
+
 			const exceptionResponse = exception.getResponse();
 
 			if (typeof exceptionResponse === 'string') {

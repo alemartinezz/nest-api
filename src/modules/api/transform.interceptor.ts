@@ -22,8 +22,11 @@ export class TransformInterceptor<T>
 		return next.handle().pipe(
 			map((data) => {
 				const ctx = context.switchToHttp();
+
 				const response = ctx.getResponse();
+
 				const statusCode: number = response.statusCode;
+
 				const statusText = HttpStatus[statusCode] || 'UnknownStatus';
 
 				// Extract messages from data

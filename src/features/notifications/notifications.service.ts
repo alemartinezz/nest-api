@@ -23,18 +23,21 @@ export class MyNotificationsService {
 					code
 				}
 			);
+
 			// Send the email using the MailService
 			await this.mailService.sendEmail(
 				email,
 				'Verification Email',
 				html
 			);
+
 			this.logger.log(`Verification email sent to ${email}`);
 		} catch (error) {
 			this.logger.error(
 				`Failed to send verification email to ${email}`,
 				error
 			);
+
 			throw error;
 		}
 	}
