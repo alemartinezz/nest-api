@@ -1,0 +1,1 @@
+{"version":3,"file":"resend-verification.dto.js","sourceRoot":"/","sources":["src/features/users/dtos/resend-verification.dto.ts"],"names":[],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;AAEA,OAAO,EAAE,OAAO,EAAE,UAAU,EAAE,MAAM,iBAAiB,CAAC;IAEzC,qBAAqB;;;;;sBAArB,qBAAqB;;gBAGjC,UAAK,wDAAS;;;;;;iCAFb,OAAO,EAAE,EACT,UAAU,EAAE;YACb,iKAAA,KAAK,6BAAL,KAAK,qFAAS;;;;;SAHF,qBAAqB"}

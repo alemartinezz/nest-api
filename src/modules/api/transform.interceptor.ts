@@ -1,5 +1,4 @@
 // src/modules/api/transform.interceptor.ts
-
 import {
 	CallHandler,
 	ExecutionContext,
@@ -13,8 +12,7 @@ import { ResponseFormat } from './response.format';
 
 @Injectable()
 export class TransformInterceptor<T>
-	implements NestInterceptor<T, ResponseFormat<T>>
-{
+	implements NestInterceptor<T, ResponseFormat<T>> {
 	intercept(
 		context: ExecutionContext,
 		next: CallHandler
@@ -25,7 +23,6 @@ export class TransformInterceptor<T>
 				const response = ctx.getResponse();
 				const statusCode: number = response.statusCode;
 				const statusText = HttpStatus[statusCode] || 'UnknownStatus';
-
 				// Extract messages from data
 				const messages = data.messages ?? null;
 
