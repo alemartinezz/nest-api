@@ -8,7 +8,7 @@ import { Model } from 'mongoose';
 import {
 	User,
 	UserDocument
-} from 'src/modules/mongoose/schemas/user.schema';
+} from '../../../modules/mongoose/schemas/user.schema';
 import { UserRole } from '../dtos/roles.guards.dto';
 
 @Injectable()
@@ -20,23 +20,28 @@ export class SuperUserService implements OnModuleInit {
 
 	constructor(
 		private readonly configService: ConfigService,
-		@InjectModel(User.name) private userModel: Model<UserDocument>
+		@InjectModel(User.name)
+		private userModel: Model<UserDocument>
 	) {
 		this.superToken = this.configService.get<string>('SUPER_TOKEN');
 		this.superEmail = this.configService.get<string>('SUPER_EMAIL');
-		this.superPassword =
-			this.configService.get<string>('SUPER_PASSWORD');
+		this.superPassword = this.configService.get<string>('SUPER_PASSWORD');
 	}
 
 	async onModuleInit() {
 		await this.ensureSuperUser();
+
+		const x = ['hi', 'hello', 'world'];
 	}
 
 	private async ensureSuperUser() {
 		try {
 			const existingUser = await this.userModel
-				.findOne({ email: this.superEmail })
+				.findOne({
+					email: this.superEmail
+				})
 				.exec();
+
 			// Hash the super password
 			const hashedPassword = await argon2.hash(this.superPassword, {
 				type: argon2.argon2id,
@@ -44,30 +49,38 @@ export class SuperUserService implements OnModuleInit {
 				timeCost: 3,
 				parallelism: 1
 			});
+
 			if (existingUser) {
 				this.logger.log(
 					`Super user with email ${this.superEmail} already exists.`
 				);
+
 				let updated = false;
+
 				if (existingUser.token !== this.superToken) {
 					existingUser.token = this.superToken;
 					updated = true;
 				}
+
 				if (existingUser.role !== UserRole.SUPER) {
 					existingUser.role = UserRole.SUPER;
 					updated = true;
 				}
+
 				// Update password if it doesn't match
 				const isPasswordValid = await argon2.verify(
 					existingUser.password,
 					this.superPassword
 				);
+
 				if (!isPasswordValid) {
 					existingUser.password = hashedPassword;
 					updated = true;
 				}
+
 				if (updated) {
 					await existingUser.save();
+
 					this.logger.log(`Super user updated.`);
 				}
 			} else {
@@ -79,7 +92,9 @@ export class SuperUserService implements OnModuleInit {
 					token: this.superToken,
 					tokenTotalUsage: 0
 				});
+
 				await superUser.save();
+
 				this.logger.log(
 					`Super user created with email ${this.superEmail}`
 				);

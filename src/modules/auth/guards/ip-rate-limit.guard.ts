@@ -1,5 +1,3 @@
-// src/modules/auth/guards/ip-rate-limit.guard.ts
-
 import {
 	CanActivate,
 	ExecutionContext,
@@ -8,10 +6,10 @@ import {
 	Injectable,
 	Logger
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Request, Response } from 'express';
 import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
+import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../../redis/redis.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
@@ -21,14 +19,13 @@ export class IpRateLimitGuard implements CanActivate {
 	private readonly maxRequests: number;
 	private readonly windowSizeInSeconds: number;
 	private rateLimiter: RateLimiterRedis;
-
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly reflector: Reflector,
 		private readonly redisService: RedisService
 	) {
-		this.maxRequests =
-			this.configService.get<number>('IP_RATE_LIMIT_MAX');
+		this.maxRequests = this.configService.get<number>('IP_RATE_LIMIT_MAX');
+
 		this.windowSizeInSeconds = this.configService.get<number>(
 			'IP_RATE_LIMIT_WINDOW'
 		);
@@ -52,7 +49,6 @@ export class IpRateLimitGuard implements CanActivate {
 		const ctx = context.switchToHttp();
 		const request = ctx.getRequest<Request>();
 		const response = ctx.getResponse<Response>();
-
 		const ipAddress = request.ip || request.connection.remoteAddress;
 
 		try {
@@ -64,10 +60,12 @@ export class IpRateLimitGuard implements CanActivate {
 					'X-IP-RateLimit-Limit',
 					this.maxRequests.toString()
 				);
+
 				response.set(
 					'X-IP-RateLimit-Remaining',
 					rateLimiterRes.remainingPoints.toString()
 				);
+
 				response.set(
 					'X-IP-RateLimit-Reset',
 					new Date(

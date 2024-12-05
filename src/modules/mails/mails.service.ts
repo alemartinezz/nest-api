@@ -41,21 +41,23 @@ export class MailService {
 				'templates',
 				`${templateName}.html`
 			);
+
 			// Check if the file exists asynchronously
 			try {
 				await fs.access(templatePath);
 			} catch {
-				console.error(
-					'Template file does not exist at:',
-					templatePath
-				);
+				console.error('Template file does not exist at:', templatePath);
+
 				throw new Error('Template file does not exist.');
 			}
+
 			let template = await fs.readFile(templatePath, 'utf-8');
+
 			for (const [key, value] of Object.entries(variables)) {
 				const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
 				template = template.replace(regex, value);
 			}
+
 			return template;
 		} catch (error) {
 			throw new Error(
@@ -80,6 +82,7 @@ export class MailService {
 			subject,
 			html
 		};
+
 		try {
 			await this.transporter.sendMail(mailOptions);
 			this.logger.log(`${subject} email sent to ${email}`);
@@ -88,6 +91,7 @@ export class MailService {
 				`Failed to send ${subject} email to ${email}`,
 				error
 			);
+
 			throw error;
 		}
 	}

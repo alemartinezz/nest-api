@@ -9,33 +9,19 @@ import {
 	Put,
 	Query
 } from '@nestjs/common';
-
-import { Public } from 'src/modules/auth/decorators/public.decorator';
-
-import { UserRole } from 'src/modules/auth/dtos/roles.guards.dto';
-
-import { UserDocument } from 'src/modules/mongoose/schemas/user.schema';
-
+import { Public } from '../../modules/auth/decorators/public.decorator';
+import { UserRole } from '../../modules/auth/dtos/roles.guards.dto';
+import { UserDocument } from '../../modules/mongoose/schemas/user.schema';
 import { CurrentUser } from '../../modules/auth/decorators/current-user.decorator';
-
 import { Roles } from '../../modules/auth/decorators/roles.decorator';
-
 import { ChangePasswordDto } from './dtos/change-password.dto';
-
 import { GetUserDto } from './dtos/get-user.dto';
-
 import { ResendVerificationDto } from './dtos/resend-verification.dto';
-
 import { SignInDto } from './dtos/sign-in.dto';
-
 import { SignUpDto } from './dtos/sign-up.dto';
-
 import { UpdateUserDto } from './dtos/update-user.dto';
-
 import { UserResponseDto } from './dtos/user-response.dto';
-
 import { VerifyEmailDto } from './dtos/verify-email.dto';
-
 import { MyUsersService } from './users.service';
 
 @Controller('users')
@@ -52,9 +38,11 @@ export class MyUsersController {
 
 		const userDto = await this.usersService.signUp(email, password);
 
-		return { user: userDto, messages: 'User created successfully' };
+		return {
+			user: userDto,
+			messages: 'User created successfully'
+		};
 	}
-
 	@Public()
 	@Post('login')
 	@HttpCode(HttpStatus.OK)
@@ -65,7 +53,10 @@ export class MyUsersController {
 
 		const { user } = await this.usersService.login(email, password);
 
-		return { user, messages: 'Login successful' };
+		return {
+			user,
+			messages: 'Login successful'
+		};
 	}
 
 	@Public()
@@ -78,9 +69,10 @@ export class MyUsersController {
 
 		await this.usersService.verifyEmail(email, code);
 
-		return { messages: 'Email verified successfully.' };
+		return {
+			messages: 'Email verified successfully.'
+		};
 	}
-
 	@Public()
 	@Post('resend-verification-code')
 	@HttpCode(HttpStatus.OK)
@@ -91,7 +83,9 @@ export class MyUsersController {
 
 		await this.usersService.resendVerificationCode(email);
 
-		return { messages: 'Verification code resent successfully.' };
+		return {
+			messages: 'Verification code resent successfully.'
+		};
 	}
 
 	@Roles(UserRole.ADMIN, UserRole.BASIC)
@@ -106,7 +100,9 @@ export class MyUsersController {
 			changePasswordDto
 		);
 
-		return { messages: 'Password updated successfully.' };
+		return {
+			messages: 'Password updated successfully.'
+		};
 	}
 
 	@Roles(UserRole.ADMIN, UserRole.BASIC)
@@ -124,6 +120,7 @@ export class MyUsersController {
 			messages: 'Profile retrieved successfully.'
 		};
 	}
+
 	@Roles(UserRole.ADMIN, UserRole.BASIC)
 	@HttpCode(HttpStatus.OK)
 	@Put('me')
@@ -135,11 +132,18 @@ export class MyUsersController {
 			authenticatedUser,
 			updates
 		);
+
 		if (!changesDetected) {
-			return { user, messages: 'No changes detected.' };
+			return {
+				user,
+				messages: 'No changes detected.'
+			};
 		}
 
-		return { user, messages: 'Profile updated successfully.' };
+		return {
+			user,
+			messages: 'Profile updated successfully.'
+		};
 	}
 
 	@Roles(UserRole.ADMIN)
@@ -155,6 +159,7 @@ export class MyUsersController {
 			messages: 'User retrieved successfully.'
 		};
 	}
+
 	@Roles(UserRole.ADMIN)
 	@HttpCode(HttpStatus.OK)
 	@Put()
@@ -164,11 +169,17 @@ export class MyUsersController {
 	): Promise<{ user: UserResponseDto; messages: string }> {
 		const { user, changesDetected } =
 			await this.usersService.updateUserById(params, updates);
+
 		if (!changesDetected) {
-			
-return { user, messages: 'No changes detected.' };
+			return {
+				user,
+				messages: 'No changes detected.'
+			};
 		}
 
-		return { user, messages: 'User updated successfully.' };
+		return {
+			user,
+			messages: 'User updated successfully.'
+		};
 	}
 }

@@ -4,10 +4,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Connection, Model } from 'mongoose';
-import {
-	User,
-	UserDocument
-} from 'src/modules/mongoose/schemas/user.schema';
+import { User, UserDocument } from '../modules/mongoose/schemas/user.schema';
 import * as request from 'supertest';
 import { AppModule } from '../app/app.module';
 import { AllExceptionsFilter } from '../modules/api/http-exception.filter';
@@ -57,6 +54,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 		const userModel = moduleFixture.get<Model<UserDocument>>(
 			getModelToken(User.name)
 		);
+
 		await userModel.deleteMany({
 			email: {
 				$in: [
@@ -100,9 +98,8 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(201)
 				.expect((res) => {
 					expect(res.body.data.user).toBeDefined();
-					expect(res.body.data.user.email).toBe(
-						'test@example.com'
-					);
+					expect(res.body.data.user.email).toBe('test@example.com');
+
 					expect(res.body.messages).toContain(
 						'User created successfully'
 					);
@@ -210,6 +207,7 @@ describe('UsersController (e2e) - Input Validation', () => {
 					expect(res.body.data.user.email).toBe(
 						'loginuser@example.com'
 					);
+
 					expect(res.body.messages).toContain('Login successful');
 				});
 		});
@@ -573,12 +571,21 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(201);
 
 			const user = await userModel
-				.findOne({ email: 'adminuser@example.com' })
+				.findOne({
+					email: 'adminuser@example.com'
+				})
 				.exec();
+
 			userId = user._id.toString();
 			await userModel.updateOne(
-				{ _id: user._id },
-				{ $set: { role: 'admin' } }
+				{
+					_id: user._id
+				},
+				{
+					$set: {
+						role: 'admin'
+					}
+				}
 			);
 
 			const loginResponse = await request(app.getHttpServer())
@@ -602,20 +609,26 @@ describe('UsersController (e2e) - Input Validation', () => {
 
 		it('should retrieve a user by ID when authenticated as admin', async () => {
 			const user = await userModel
-				.findOne({ email: 'regularuser@example.com' })
+				.findOne({
+					email: 'regularuser@example.com'
+				})
 				.exec();
+
 			const userIdToRetrieve = user._id.toString();
 
 			return request(app.getHttpServer())
 				.get(url)
 				.set('Authorization', `Bearer ${adminToken}`)
-				.query({ id: userIdToRetrieve })
+				.query({
+					id: userIdToRetrieve
+				})
 				.expect(200)
 				.expect((res) => {
 					expect(res.body.data.user).toBeDefined();
 					expect(res.body.data.user.email).toBe(
 						'regularuser@example.com'
 					);
+
 					expect(res.body.messages).toContain(
 						'User retrieved successfully.'
 					);
@@ -645,14 +658,19 @@ describe('UsersController (e2e) - Input Validation', () => {
 			const basicToken = loginResponse.body.data.user.token;
 
 			const user = await userModel
-				.findOne({ email: 'regularuser@example.com' })
+				.findOne({
+					email: 'regularuser@example.com'
+				})
 				.exec();
+
 			const userIdToRetrieve = user._id.toString();
 
 			return request(app.getHttpServer())
 				.get(url)
 				.set('Authorization', `Bearer ${basicToken}`)
-				.query({ id: userIdToRetrieve })
+				.query({
+					id: userIdToRetrieve
+				})
 				.expect(403)
 				.expect((res) => {
 					expect(res.body.messages[0]).toContain('Access denied');
@@ -665,7 +683,9 @@ describe('UsersController (e2e) - Input Validation', () => {
 			return request(app.getHttpServer())
 				.get(url)
 				.set('Authorization', `Bearer ${adminToken}`)
-				.query({ id: nonExistentUserId })
+				.query({
+					id: nonExistentUserId
+				})
 				.expect(404)
 				.expect((res) => {
 					expect(res.body.messages).toContain(
@@ -696,12 +716,20 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(201);
 
 			const adminUser = await userModel
-				.findOne({ email: 'adminuser2@example.com'.toLowerCase() })
+				.findOne({
+					email: 'adminuser2@example.com'.toLowerCase()
+				})
 				.exec();
 
 			await userModel.updateOne(
-				{ _id: adminUser._id },
-				{ $set: { role: 'admin' } }
+				{
+					_id: adminUser._id
+				},
+				{
+					$set: {
+						role: 'admin'
+					}
+				}
 			);
 
 			const loginResponse = await request(app.getHttpServer())
@@ -724,7 +752,9 @@ describe('UsersController (e2e) - Input Validation', () => {
 				.expect(201);
 
 			const user = await userModel
-				.findOne({ email: 'userToUpdate@example.com'.toLowerCase() })
+				.findOne({
+					email: 'userToUpdate@example.com'.toLowerCase()
+				})
 				.exec();
 
 			userIdToUpdate = user._id.toString();
@@ -734,14 +764,19 @@ describe('UsersController (e2e) - Input Validation', () => {
 			return request(app.getHttpServer())
 				.put(url)
 				.set('Authorization', `Bearer ${adminToken}`)
-				.query({ id: userIdToUpdate })
-				.send({ email: 'updateduser@example.com' })
+				.query({
+					id: userIdToUpdate
+				})
+				.send({
+					email: 'updateduser@example.com'
+				})
 				.expect(200)
 				.expect((res) => {
 					expect(res.body.data.user).toBeDefined();
 					expect(res.body.data.user.email).toBe(
 						'updateduser@example.com'
 					);
+
 					expect(res.body.messages).toContain(
 						'User updated successfully.'
 					);
@@ -751,8 +786,12 @@ describe('UsersController (e2e) - Input Validation', () => {
 		it('should fail when not authenticated', () => {
 			return request(app.getHttpServer())
 				.put(url)
-				.query({ id: userIdToUpdate })
-				.send({ email: 'shouldnotwork@example.com' })
+				.query({
+					id: userIdToUpdate
+				})
+				.send({
+					email: 'shouldnotwork@example.com'
+				})
 				.expect(401)
 				.expect((res) => {
 					expect(res.body.messages).toContain(
@@ -784,8 +823,12 @@ describe('UsersController (e2e) - Input Validation', () => {
 			return request(app.getHttpServer())
 				.put(url)
 				.set('Authorization', `Bearer ${basicToken}`)
-				.query({ id: userIdToUpdate })
-				.send({ email: 'shouldnotwork@example.com' })
+				.query({
+					id: userIdToUpdate
+				})
+				.send({
+					email: 'shouldnotwork@example.com'
+				})
 				.expect(403)
 				.expect((res) => {
 					expect(res.body.messages[0]).toContain('Access denied');
@@ -798,8 +841,12 @@ describe('UsersController (e2e) - Input Validation', () => {
 			return request(app.getHttpServer())
 				.put(url)
 				.set('Authorization', `Bearer ${adminToken}`)
-				.query({ id: nonExistentUserId })
-				.send({ email: 'shouldnotwork@example.com' })
+				.query({
+					id: nonExistentUserId
+				})
+				.send({
+					email: 'shouldnotwork@example.com'
+				})
 				.expect(404)
 				.expect((res) => {
 					expect(res.body.messages).toContain(
@@ -812,8 +859,12 @@ describe('UsersController (e2e) - Input Validation', () => {
 			return request(app.getHttpServer())
 				.put(url)
 				.set('Authorization', `Bearer ${adminToken}`)
-				.query({ id: userIdToUpdate })
-				.send({ email: 'invalid-email' })
+				.query({
+					id: userIdToUpdate
+				})
+				.send({
+					email: 'invalid-email'
+				})
 				.expect(400)
 				.expect((res) => {
 					expect(res.body.messages).toContain(
@@ -826,8 +877,12 @@ describe('UsersController (e2e) - Input Validation', () => {
 			return request(app.getHttpServer())
 				.put(url)
 				.set('Authorization', `Bearer ${adminToken}`)
-				.query({ id: userIdToUpdate })
-				.send({ role: 'invalid-role' })
+				.query({
+					id: userIdToUpdate
+				})
+				.send({
+					role: 'invalid-role'
+				})
 				.expect(400)
 				.expect((res) => {
 					expect(res.body.messages[0]).toContain(
