@@ -7,8 +7,8 @@ import {
 	Injectable
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from 'src/modules/auth/decorators/public.decorator';
-import { ROLES_KEY } from 'src/modules/auth/decorators/roles.decorator';
+import { IS_PUBLIC_KEY } from '../../../modules/auth/decorators/public.decorator';
+import { ROLES_KEY } from '../../../modules/auth/decorators/roles.decorator';
 import { UserRole } from '../dtos/roles.guards.dto';
 
 @Injectable()
@@ -33,18 +33,14 @@ export class RolesGuard implements CanActivate {
 		const requiredRoles = rolesArray ?? [];
 
 		if (requiredRoles.length === 0) {
-			throw new ForbiddenException(
-				'Access denied: No roles assigned.'
-			);
+			throw new ForbiddenException('Access denied: No roles assigned.');
 		}
 
 		const request = context.switchToHttp().getRequest();
 		const user = request.user;
 
 		if (!user || !user.role) {
-			throw new ForbiddenException(
-				'Access denied: No user role found.'
-			);
+			throw new ForbiddenException('Access denied: No user role found.');
 		}
 
 		if (user.role === UserRole.SUPER) {

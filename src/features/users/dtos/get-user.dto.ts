@@ -4,7 +4,9 @@ import { IsEmail, IsMongoId, IsOptional, IsString } from 'class-validator';
 
 export class GetUserDto {
 	@IsOptional()
-	@IsMongoId({ message: 'Invalid id' })
+	@IsMongoId({
+		message: 'Invalid id'
+	})
 	id?: string;
 
 	@IsOptional()

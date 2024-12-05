@@ -4,7 +4,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
-import { MyNotificationsModule } from 'src/features/notifications/notifications.module';
+import { MyNotificationsModule } from '../../features/notifications/notifications.module';
 import { User, UserSchema } from '../mongoose/schemas/user.schema';
 import { RedisModule } from '../redis/redis.module';
 import { SharedModule } from '../shared.module';
@@ -17,7 +17,12 @@ import { SuperUserService } from './services/super-user.service';
 @Module({
 	imports: [
 		ConfigModule,
-		MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+		MongooseModule.forFeature([
+			{
+				name: User.name,
+				schema: UserSchema
+			}
+		]),
 		MyNotificationsModule,
 		SharedModule,
 		RedisModule

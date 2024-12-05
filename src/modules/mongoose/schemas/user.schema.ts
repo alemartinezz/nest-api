@@ -2,52 +2,95 @@
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { UserRole } from 'src/modules/auth/dtos/roles.guards.dto';
+import { UserRole } from '../../../modules/auth/dtos/roles.guards.dto';
 
 export type UserDocument = User & Document;
 
-@Schema({ timestamps: true })
+@Schema({
+	timestamps: true
+})
 export class User extends Document {
-	@Prop({ required: true, unique: true, nullable: false })
+	@Prop({
+		required: true,
+		unique: true,
+		nullable: false
+	})
 	email: string;
 
-	@Prop({ required: true, default: false, nullable: false })
+	@Prop({
+		required: true,
+		default: false,
+		nullable: false
+	})
 	emailVerified: boolean;
 
-	@Prop({ nullable: true })
+	@Prop({
+		nullable: true
+	})
 	emailVerificationCode?: string;
 
-	@Prop({ nullable: true })
+	@Prop({
+		nullable: true
+	})
 	emailVerificationCodeExpires?: Date;
 
-	@Prop({ required: true, nullable: false })
+	@Prop({
+		required: true,
+		nullable: false
+	})
 	password: string;
 
-	@Prop({ enum: UserRole, default: UserRole.BASIC, nullable: false })
+	@Prop({
+		enum: UserRole,
+		default: UserRole.BASIC,
+		nullable: false
+	})
 	role: UserRole;
 
-	@Prop({ unique: true, nullable: true })
+	@Prop({
+		unique: true,
+		nullable: true
+	})
 	token?: string;
 
-	@Prop({ type: Date, nullable: true })
+	@Prop({
+		type: Date,
+		nullable: true
+	})
 	tokenExpiration: Date;
 
-	@Prop({ type: Number, default: 0 })
+	@Prop({
+		type: Number,
+		default: 0
+	})
 	tokenTotalUsage: number;
 
-	@Prop({ type: Number, nullable: true })
+	@Prop({
+		type: Number,
+		nullable: true
+	})
 	tokenCurrentUsage: number;
 
-	@Prop({ type: Number, nullable: true })
+	@Prop({
+		type: Number,
+		nullable: true
+	})
 	tokenCurrentLimit: number;
 
-	@Prop({ type: Number, nullable: true })
+	@Prop({
+		type: Number,
+		nullable: true
+	})
 	tokenCurrentLeft: number;
 
-	@Prop({ required: false })
+	@Prop({
+		required: false
+	})
 	createdAt: Date;
 
-	@Prop({ required: false })
+	@Prop({
+		required: false
+	})
 	updatedAt: Date;
 }
 

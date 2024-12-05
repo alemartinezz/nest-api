@@ -37,9 +37,8 @@ async function bootstrap() {
 	const apiHost = configService.get<string>('API_HOST');
 
 	await app.listen(apiPort, apiHost, () => {
-		console.log(
-			`🚀 Server running at ${protocol}://${apiHost}:${apiPort}`
-		);
+		console.log(`🚀 Server running at ${protocol}://${apiHost}:${apiPort}`);
 	});
 }
+
 bootstrap();

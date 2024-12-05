@@ -12,7 +12,9 @@ export class RedisService {
 	constructor(private readonly configService: ConfigService) {
 		const url = this.getRedisUrl();
 
-		this.client = createClient({ url });
+		this.client = createClient({
+			url
+		});
 
 		this.client.on('error', (err) => {
 			this.logger.error('Redis Client Error', err);

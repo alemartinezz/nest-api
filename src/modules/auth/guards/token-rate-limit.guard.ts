@@ -14,15 +14,15 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Request, Response } from 'express';
 import { Model } from 'mongoose';
 import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
-import { IS_PUBLIC_KEY } from 'src/modules/auth/decorators/public.decorator';
+import { IS_PUBLIC_KEY } from '../../../modules/auth/decorators/public.decorator';
 import {
 	RateLimitConfig,
 	RateLimitConfigService
-} from 'src/modules/auth/services/rate-limit-config.service';
+} from '../../../modules/auth/services/rate-limit-config.service';
 import {
 	User,
 	UserDocument
-} from 'src/modules/mongoose/schemas/user.schema';
+} from '../../../modules/mongoose/schemas/user.schema';
 import { RedisService } from '../../redis/redis.service';
 import { UserRole } from '../dtos/roles.guards.dto';
 
@@ -39,14 +39,16 @@ export class TokenRateLimitGuard implements CanActivate {
 		private readonly rateLimitConfigService: RateLimitConfigService,
 		private readonly redisService: RedisService
 	) {
-		const tokenRegexString =
-			this.configService.get<string>('TOKEN_REGEX');
+		const tokenRegexString = this.configService.get<string>('TOKEN_REGEX');
+
 		if (!tokenRegexString) {
 			this.logger.error(
 				'TOKEN_REGEX is not defined in the configuration.'
 			);
+
 			throw new Error('TOKEN_REGEX is required.');
 		}
+
 		this.TOKEN_REGEX = new RegExp(tokenRegexString);
 
 		const redisClient = this.redisService.getClient();
@@ -62,17 +64,21 @@ export class TokenRateLimitGuard implements CanActivate {
 			IS_PUBLIC_KEY,
 			[context.getHandler(), context.getClass()]
 		);
+
 		const ctx = context.switchToHttp();
 		const request = ctx.getRequest<Request>();
 		const response = ctx.getResponse<Response>();
 
 		try {
 			const authHeader = this.getAuthHeader(request);
+
 			if (!authHeader) {
 				if (isPublic) {
 					return true;
 				}
+
 				this.logger.warn('Authorization header missing');
+
 				throw new HttpException(
 					'Authorization header is required',
 					HttpStatus.UNAUTHORIZED
@@ -86,21 +92,26 @@ export class TokenRateLimitGuard implements CanActivate {
 			request.user = user;
 
 			const { role } = user;
+
 			const rateLimitConfig =
 				this.rateLimitConfigService.getRateLimit(role);
 
 			if (role === UserRole.SUPER) {
 				await this.handleSuperUser(user, response);
+
 				return true;
 			}
 
 			await this.handleRegularUser(user, rateLimitConfig, response);
+
 			return true;
 		} catch (error) {
 			if (error instanceof HttpException) {
 				throw error;
 			}
+
 			this.logger.error('Error in TokenRateLimitGuard', error);
+
 			throw new HttpException(
 				'Internal server error in token rate limiting',
 				HttpStatus.INTERNAL_SERVER_ERROR
@@ -119,22 +130,22 @@ export class TokenRateLimitGuard implements CanActivate {
 	private validateTokenFormat(token: string): void {
 		if (!this.TOKEN_REGEX.test(token)) {
 			this.logger.warn(`Invalid token format: ${token}`);
-			throw new HttpException(
-				'Invalid token',
-				HttpStatus.UNAUTHORIZED
-			);
+
+			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
 		}
 	}
 
 	private async findUserByToken(token: string): Promise<UserDocument> {
-		const user = await this.userModel.findOne({ token });
+		const user = await this.userModel.findOne({
+			token
+		});
+
 		if (!user) {
 			this.logger.warn('Invalid token');
-			throw new HttpException(
-				'Invalid token',
-				HttpStatus.UNAUTHORIZED
-			);
+
+			throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
 		}
+
 		return user;
 	}
 
@@ -160,6 +171,7 @@ export class TokenRateLimitGuard implements CanActivate {
 			this.logger.warn(
 				`Token ${user.token} has expired for user ${user.email}`
 			);
+
 			throw new HttpException(
 				'Token has expired.',
 				HttpStatus.UNAUTHORIZED
@@ -170,6 +182,7 @@ export class TokenRateLimitGuard implements CanActivate {
 			this.logger.warn(
 				`Token ${user.token} has reached its usage limit for user ${user.email}`
 			);
+
 			throw new HttpException(
 				'Token usage limit exceeded. Consider upgrading your plan. More info at: https://google.com/plans',
 				HttpStatus.TOO_MANY_REQUESTS
@@ -181,9 +194,7 @@ export class TokenRateLimitGuard implements CanActivate {
 	}
 
 	private isTokenExpired(user: UserDocument): boolean {
-		return user.tokenExpiration
-			? user.tokenExpiration < new Date()
-			: false;
+		return user.tokenExpiration ? user.tokenExpiration < new Date() : false;
 	}
 
 	private hasExceededUsageLimit(
@@ -199,6 +210,7 @@ export class TokenRateLimitGuard implements CanActivate {
 		response: Response
 	): Promise<void> {
 		const { maxRequests, windowSizeInSeconds } = rateLimitConfig;
+
 		const tokenRateLimitKey = `token-rate-limit:${user.token}`;
 
 		try {
@@ -224,9 +236,11 @@ export class TokenRateLimitGuard implements CanActivate {
 					Math.ceil(rateLimiterRes.msBeforeNext / 1000).toString()
 				);
 			}
+
 			this.logger.warn(
 				`Token ${user.token} with role ${user.role} has exceeded the rate limit`
 			);
+
 			throw new HttpException(
 				'Too many requests, please try again later.',
 				HttpStatus.TOO_MANY_REQUESTS
@@ -256,6 +270,7 @@ export class TokenRateLimitGuard implements CanActivate {
 				? 'unlimited'
 				: tokenCurrentLimit.toString()
 		);
+
 		response.set('X-Token-RateLimit-Remaining', tokenCurrentLeft);
 		response.set(
 			'X-Token-RateLimit-Reset',
@@ -270,6 +285,7 @@ export class TokenRateLimitGuard implements CanActivate {
 	private async incrementTokenUsage(user: UserDocument): Promise<void> {
 		user.tokenTotalUsage = (user.tokenTotalUsage ?? 0) + 1;
 		user.tokenCurrentUsage = (user.tokenCurrentUsage ?? 0) + 1;
+
 		try {
 			await user.save();
 		} catch (error) {
@@ -277,6 +293,7 @@ export class TokenRateLimitGuard implements CanActivate {
 				`Error updating token usage for user ${user.email}`,
 				error
 			);
+
 			throw new HttpException(
 				'Internal server error while updating token usage',
 				HttpStatus.INTERNAL_SERVER_ERROR
@@ -284,10 +301,9 @@ export class TokenRateLimitGuard implements CanActivate {
 		}
 	}
 
-	private async incrementTokenTotalUsage(
-		user: UserDocument
-	): Promise<void> {
+	private async incrementTokenTotalUsage(user: UserDocument): Promise<void> {
 		user.tokenTotalUsage = (user.tokenTotalUsage ?? 0) + 1;
+
 		try {
 			await user.save();
 		} catch (error) {
@@ -295,6 +311,7 @@ export class TokenRateLimitGuard implements CanActivate {
 				`Error updating tokenTotalUsage for user ${user.email}`,
 				error
 			);
+
 			throw new HttpException(
 				'Internal server error while updating token usage',
 				HttpStatus.INTERNAL_SERVER_ERROR
