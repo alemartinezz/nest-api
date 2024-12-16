@@ -1,8 +1,12 @@
 // src/modules/redis/redis.service.ts
 
-import { Injectable, Logger } from '@nestjs/common';
+import {
+	Injectable, Logger
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, RedisClientType } from 'redis';
+import {
+	createClient, RedisClientType
+} from 'redis';
 
 @Injectable()
 export class RedisService {
@@ -16,13 +20,23 @@ export class RedisService {
 			url
 		});
 
-		this.client.on('error', (err) => {
-			this.logger.error('Redis Client Error', err);
-		});
+		this.client.on(
+			'error',
+			(err) => {
+				this.logger.error(
+					'Redis Client Error',
+					err
+				);
+			}
+		);
 
-		this.client.connect().catch((err) => {
-			this.logger.error('Redis Client Connection Error', err);
-		});
+		this.client.connect()
+			.catch((err) => {
+				this.logger.error(
+					'Redis Client Connection Error',
+					err
+				);
+			});
 	}
 
 	private getRedisUrl(): string {

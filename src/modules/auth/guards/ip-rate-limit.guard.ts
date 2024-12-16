@@ -7,8 +7,12 @@ import {
 	Logger
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Request, Response } from 'express';
-import { RateLimiterRedis, RateLimiterRes } from 'rate-limiter-flexible';
+import {
+	Request, Response
+} from 'express';
+import {
+	RateLimiterRedis, RateLimiterRes
+} from 'rate-limiter-flexible';
 import { ConfigService } from '@nestjs/config';
 import { RedisService } from '../../redis/redis.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -26,9 +30,7 @@ export class IpRateLimitGuard implements CanActivate {
 	) {
 		this.maxRequests = this.configService.get<number>('IP_RATE_LIMIT_MAX');
 
-		this.windowSizeInSeconds = this.configService.get<number>(
-			'IP_RATE_LIMIT_WINDOW'
-		);
+		this.windowSizeInSeconds = this.configService.get<number>('IP_RATE_LIMIT_WINDOW');
 
 		const redisClient = this.redisService.getClient();
 
@@ -43,7 +45,10 @@ export class IpRateLimitGuard implements CanActivate {
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const isPublic = this.reflector.getAllAndOverride<boolean>(
 			IS_PUBLIC_KEY,
-			[context.getHandler(), context.getClass()]
+			[
+				context.getHandler(),
+				context.getClass()
+			]
 		);
 
 		const ctx = context.switchToHttp();
@@ -68,9 +73,8 @@ export class IpRateLimitGuard implements CanActivate {
 
 				response.set(
 					'X-IP-RateLimit-Reset',
-					new Date(
-						Date.now() + rateLimiterRes.msBeforeNext
-					).toUTCString()
+					new Date(Date.now() + rateLimiterRes.msBeforeNext)
+						.toUTCString()
 				);
 			}
 
@@ -79,7 +83,8 @@ export class IpRateLimitGuard implements CanActivate {
 			if (rateLimiterRes instanceof RateLimiterRes) {
 				response.set(
 					'Retry-After',
-					Math.ceil(rateLimiterRes.msBeforeNext / 1000).toString()
+					Math.ceil(rateLimiterRes.msBeforeNext / 1000)
+						.toString()
 				);
 			}
 

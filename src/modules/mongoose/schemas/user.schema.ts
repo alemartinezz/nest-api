@@ -1,6 +1,8 @@
 // src/modules/mongoose/schemas/user.schema.ts
 
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import {
+	Prop, Schema, SchemaFactory
+} from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { UserRole } from '../../../modules/auth/dtos/roles.guards.dto';
 

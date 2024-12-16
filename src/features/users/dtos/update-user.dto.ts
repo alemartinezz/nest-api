@@ -1,6 +1,8 @@
 // src/features/users/dtos/update-user.dto.ts
 
-import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+	IsEmail, IsEnum, IsOptional, IsString
+} from 'class-validator';
 import { UserRole } from '../../../modules/auth/dtos/roles.guards.dto';
 
 export class UpdateUserDto {

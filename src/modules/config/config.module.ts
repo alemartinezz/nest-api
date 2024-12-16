@@ -11,6 +11,9 @@ import { validateEnv } from './configuration';
 			validate: validateEnv
 		})
 	],
-	exports: [NestConfigModule] // Export ConfigModule
+	exports: [
+		NestConfigModule
+	] // Export ConfigModule
 })
+
 export class ConfigModule {}

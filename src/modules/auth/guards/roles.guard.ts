@@ -18,7 +18,10 @@ export class RolesGuard implements CanActivate {
 	canActivate(context: ExecutionContext): boolean {
 		const isPublic = this.reflector.getAllAndOverride<boolean>(
 			IS_PUBLIC_KEY,
-			[context.getHandler(), context.getClass()]
+			[
+				context.getHandler(),
+				context.getClass()
+			]
 		);
 
 		if (isPublic) {
@@ -27,7 +30,10 @@ export class RolesGuard implements CanActivate {
 
 		const rolesArray = this.reflector.getAllAndMerge<UserRole[]>(
 			ROLES_KEY,
-			[context.getHandler(), context.getClass()]
+			[
+				context.getHandler(),
+				context.getClass()
+			]
 		);
 
 		const requiredRoles = rolesArray ?? [];
@@ -36,7 +42,9 @@ export class RolesGuard implements CanActivate {
 			throw new ForbiddenException('Access denied: No roles assigned.');
 		}
 
-		const request = context.switchToHttp().getRequest();
+		const request = context.switchToHttp()
+			.getRequest();
+
 		const user = request.user;
 
 		if (!user || !user.role) {
@@ -51,10 +59,6 @@ export class RolesGuard implements CanActivate {
 			return true;
 		}
 
-		throw new ForbiddenException(
-			`Access denied: Requires one of the following roles: ${requiredRoles.join(
-				', '
-			)}.`
-		);
+		throw new ForbiddenException(`Access denied: Requires one of the following roles: ${requiredRoles.join(', ')}.`);
 	}
 }

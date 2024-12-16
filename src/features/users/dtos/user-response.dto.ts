@@ -1,6 +1,8 @@
 // src/features/users/dtos/user-response.dto.ts
 
-import { Exclude, Expose, Transform } from 'class-transformer';
+import {
+	Exclude, Expose, Transform
+} from 'class-transformer';
 
 export class UserResponseDto {
 	@Expose()
@@ -27,12 +29,14 @@ export class UserResponseDto {
 	// Exclude sensitive fields
 	@Exclude()
 	password: string;
-	// Optionally exclude or transform other fields as needed
 
+	// Optionally exclude or transform other fields as needed
 	@Exclude()
 	__v: number;
 
-	@Transform(({ obj }) => obj._id.toString())
+	@Transform(({
+		obj
+	}) => obj._id.toString())
 	get userId(): string {
 		return this.id;
 	}

@@ -1,6 +1,8 @@
 // src/modules/auth/services/super-user.service.ts
 
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+	Injectable, Logger, OnModuleInit
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from 'argon2';
@@ -24,14 +26,20 @@ export class SuperUserService implements OnModuleInit {
 		private userModel: Model<UserDocument>
 	) {
 		this.superToken = this.configService.get<string>('SUPER_TOKEN');
+
 		this.superEmail = this.configService.get<string>('SUPER_EMAIL');
+
 		this.superPassword = this.configService.get<string>('SUPER_PASSWORD');
 	}
 
 	async onModuleInit() {
 		await this.ensureSuperUser();
 
-		const x = ['hi', 'hello', 'world'];
+		const x = [
+			'hi',
+			'hello',
+			'world'
+		];
 	}
 
 	private async ensureSuperUser() {
@@ -43,27 +51,30 @@ export class SuperUserService implements OnModuleInit {
 				.exec();
 
 			// Hash the super password
-			const hashedPassword = await argon2.hash(this.superPassword, {
-				type: argon2.argon2id,
-				memoryCost: 2 ** 16, // 64 MB
-				timeCost: 3,
-				parallelism: 1
-			});
+			const hashedPassword = await argon2.hash(
+				this.superPassword,
+				{
+					type: argon2.argon2id,
+					memoryCost: 2 ** 16, // 64 MB
+					timeCost: 3,
+					parallelism: 1
+				}
+			);
 
 			if (existingUser) {
-				this.logger.log(
-					`Super user with email ${this.superEmail} already exists.`
-				);
+				this.logger.log(`Super user with email ${this.superEmail} already exists.`);
 
 				let updated = false;
 
 				if (existingUser.token !== this.superToken) {
 					existingUser.token = this.superToken;
+
 					updated = true;
 				}
 
 				if (existingUser.role !== UserRole.SUPER) {
 					existingUser.role = UserRole.SUPER;
+
 					updated = true;
 				}
 
@@ -75,6 +86,7 @@ export class SuperUserService implements OnModuleInit {
 
 				if (!isPasswordValid) {
 					existingUser.password = hashedPassword;
+
 					updated = true;
 				}
 
@@ -95,12 +107,13 @@ export class SuperUserService implements OnModuleInit {
 
 				await superUser.save();
 
-				this.logger.log(
-					`Super user created with email ${this.superEmail}`
-				);
+				this.logger.log(`Super user created with email ${this.superEmail}`);
 			}
 		} catch (error) {
-			this.logger.error('Error ensuring super user existence', error);
+			this.logger.error(
+				'Error ensuring super user existence',
+				error
+			);
 		}
 	}
 }

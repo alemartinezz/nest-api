@@ -7,12 +7,18 @@ import { MongooseModule } from '@nestjs/mongoose';
 @Module({
 	imports: [
 		MongooseModule.forRootAsync({
-			inject: [ConfigService],
+			inject: [
+				ConfigService
+			],
 			useFactory: (configService: ConfigService) => ({
 				uri: configService.get<string>('MONGO_URI')
 			})
 		})
 	],
-	exports: [MongooseModule] // Export MongooseModule for use in other modules
+
+	// Export MongooseModule for use in other modules
+	exports: [
+		MongooseModule
+	]
 })
 export class MongooseModulex {}

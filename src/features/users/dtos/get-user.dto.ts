@@ -1,6 +1,8 @@
 // src/features/users/dtos/get-user.dto.ts
 
-import { IsEmail, IsMongoId, IsOptional, IsString } from 'class-validator';
+import {
+	IsEmail, IsMongoId, IsOptional, IsString
+} from 'class-validator';
 
 export class GetUserDto {
 	@IsOptional()

@@ -31,12 +31,15 @@ export class MyUsersController {
 	@Public()
 	@Post('signup')
 	@HttpCode(HttpStatus.CREATED)
-	async signUp(
-		@Body() signUpDto: SignUpDto
-	): Promise<{ user: UserResponseDto; messages: string }> {
-		const { email, password } = signUpDto;
+	async signUp(@Body() signUpDto: SignUpDto): Promise<{ user: UserResponseDto; messages: string }> {
+		const {
+			email, password
+		} = signUpDto;
 
-		const userDto = await this.usersService.signUp(email, password);
+		const userDto = await this.usersService.signUp(
+			email,
+			password
+		);
 
 		return {
 			user: userDto,
@@ -46,12 +49,17 @@ export class MyUsersController {
 	@Public()
 	@Post('login')
 	@HttpCode(HttpStatus.OK)
-	async login(
-		@Body() signInDto: SignInDto
-	): Promise<{ user: UserResponseDto; messages: string }> {
-		const { email, password } = signInDto;
+	async login(@Body() signInDto: SignInDto): Promise<{ user: UserResponseDto; messages: string }> {
+		const {
+			email, password
+		} = signInDto;
 
-		const { user } = await this.usersService.login(email, password);
+		const {
+			user
+		} = await this.usersService.login(
+			email,
+			password
+		);
 
 		return {
 			user,
@@ -62,12 +70,15 @@ export class MyUsersController {
 	@Public()
 	@Post('verify-email')
 	@HttpCode(HttpStatus.OK)
-	async verifyEmail(
-		@Body() verifyEmailDto: VerifyEmailDto
-	): Promise<{ messages: string }> {
-		const { email, code } = verifyEmailDto;
+	async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto): Promise<{ messages: string }> {
+		const {
+			email, code
+		} = verifyEmailDto;
 
-		await this.usersService.verifyEmail(email, code);
+		await this.usersService.verifyEmail(
+			email,
+			code
+		);
 
 		return {
 			messages: 'Email verified successfully.'
@@ -76,10 +87,10 @@ export class MyUsersController {
 	@Public()
 	@Post('resend-verification-code')
 	@HttpCode(HttpStatus.OK)
-	async resendVerificationCode(
-		@Body() resendVerificationDto: ResendVerificationDto
-	): Promise<{ messages: string }> {
-		const { email } = resendVerificationDto;
+	async resendVerificationCode(@Body() resendVerificationDto: ResendVerificationDto): Promise<{ messages: string }> {
+		const {
+			email
+		} = resendVerificationDto;
 
 		await this.usersService.resendVerificationCode(email);
 
@@ -88,7 +99,10 @@ export class MyUsersController {
 		};
 	}
 
-	@Roles(UserRole.ADMIN, UserRole.BASIC)
+	@Roles(
+		UserRole.ADMIN,
+		UserRole.BASIC
+	)
 	@Put('reset-password')
 	@HttpCode(HttpStatus.OK)
 	async resetPassword(
@@ -105,15 +119,14 @@ export class MyUsersController {
 		};
 	}
 
-	@Roles(UserRole.ADMIN, UserRole.BASIC)
+	@Roles(
+		UserRole.ADMIN,
+		UserRole.BASIC
+	)
 	@HttpCode(HttpStatus.OK)
 	@Get('me')
-	async getProfile(
-		@CurrentUser() authenticatedUser: UserDocument
-	): Promise<{ user: UserResponseDto; messages: string }> {
-		const userDto = await this.usersService.getUserById(
-			authenticatedUser.id
-		);
+	async getProfile(@CurrentUser() authenticatedUser: UserDocument): Promise<{ user: UserResponseDto; messages: string }> {
+		const userDto = await this.usersService.getUserById(authenticatedUser.id);
 
 		return {
 			user: userDto,
@@ -121,14 +134,19 @@ export class MyUsersController {
 		};
 	}
 
-	@Roles(UserRole.ADMIN, UserRole.BASIC)
+	@Roles(
+		UserRole.ADMIN,
+		UserRole.BASIC
+	)
 	@HttpCode(HttpStatus.OK)
 	@Put('me')
 	async updateProfile(
 		@CurrentUser() authenticatedUser: UserDocument,
 		@Body() updates: UpdateUserDto
 	): Promise<{ user: UserResponseDto; messages: string }> {
-		const { user, changesDetected } = await this.usersService.updateUser(
+		const {
+			user, changesDetected
+		} = await this.usersService.updateUser(
 			authenticatedUser,
 			updates
 		);
@@ -149,9 +167,7 @@ export class MyUsersController {
 	@Roles(UserRole.ADMIN)
 	@HttpCode(HttpStatus.OK)
 	@Get()
-	async getUserById(
-		@Query() params: GetUserDto
-	): Promise<{ user: UserResponseDto; messages: string }> {
+	async getUserById(@Query() params: GetUserDto): Promise<{ user: UserResponseDto; messages: string }> {
 		const userDto = await this.usersService.getUserById(params.id);
 
 		return {
@@ -167,8 +183,13 @@ export class MyUsersController {
 		@Query() params: GetUserDto,
 		@Body() updates: UpdateUserDto
 	): Promise<{ user: UserResponseDto; messages: string }> {
-		const { user, changesDetected } =
-			await this.usersService.updateUserById(params, updates);
+		const {
+			user, changesDetected
+		} =
+			await this.usersService.updateUserById(
+				params,
+				updates
+			);
 
 		if (!changesDetected) {
 			return {

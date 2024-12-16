@@ -8,37 +8,55 @@ import { AllExceptionsFilter } from './modules/api/http-exception.filter';
 import { TransformInterceptor } from './modules/api/transform.interceptor';
 
 async function bootstrap() {
-	const app = await NestFactory.create(AppModule, {
-		logger: ['log', 'error', 'warn', 'debug', 'verbose']
-	});
+	const app = await NestFactory.create(
+		AppModule,
+		{
+			logger: [
+				'log',
+				'error',
+				'warn',
+				'debug',
+				'verbose'
+			]
+		}
+	);
 
 	// Disable 'X-Powered-By' header
-	app.getHttpAdapter().getInstance().disable('x-powered-by');
+	app.getHttpAdapter()
+		.getInstance()
+		.disable('x-powered-by');
 
-	// Enable global interceptors and filters
+	// Enable global interceptors (success response formatter)
 	app.useGlobalInterceptors(new TransformInterceptor());
+
+	// Enable global exception filter (exception response formatter)
 	app.useGlobalFilters(new AllExceptionsFilter());
 
 	// Enable global ValidationPipe with transformation
-	app.useGlobalPipes(
-		new ValidationPipe({
-			whitelist: true, // Strip properties that don't have decorators
-			forbidNonWhitelisted: true, // Throw errors on non-whitelisted properties
-			transform: true, // Automatically transform payloads to DTO instances
-			transformOptions: {
-				enableImplicitConversion: true // Allow implicit type conversion
-			}
-		})
-	);
+	app.useGlobalPipes(new ValidationPipe({
+		whitelist: true, // Strip properties that don't have decorators
+		forbidNonWhitelisted: true, // Throw errors on non-whitelisted properties
+		transform: true, // Automatically transform payloads to DTO instances
+		transformOptions: {
+			enableImplicitConversion: true // Allow implicit type conversion
+		}
+	}));
 
 	const configService = app.get(ConfigService);
+
 	const protocol = configService.get<string>('PROTOCOL');
+
 	const apiPort = configService.get<number>('API_PORT');
+
 	const apiHost = configService.get<string>('API_HOST');
 
-	await app.listen(apiPort, apiHost, () => {
-		console.log(`🚀 Server running at ${protocol}://${apiHost}:${apiPort}`);
-	});
+	await app.listen(
+		apiPort,
+		apiHost,
+		() => {
+			console.log(`🚀 Server running at ${protocol}://${apiHost}:${apiPort}`);
+		}
+	);
 }
 
 bootstrap();
